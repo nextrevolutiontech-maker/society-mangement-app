@@ -183,6 +183,11 @@ class UserController extends GetxController {
       return;
     }
 
+    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+      _showError('Please enter a valid email address');
+      return;
+    }
+
     isLoading.value = true;
     try {
       String? creatorId = StorageService.getUserIdentifier();
@@ -190,7 +195,7 @@ class UserController extends GetxController {
       UserModel newUser = UserModel(
         name: name,
         email: email,
-        mobile: mobile,
+        mobile: '+91$mobile',
         role: 'resident',
         societyId: societyId,
         flatNo: flatNo,
@@ -215,6 +220,92 @@ class UserController extends GetxController {
       );
 
       // Refresh list
+      _refreshUsers();
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // EDIT RESIDENT
+  // ════════════════════════════════════════════════════════════
+
+  void setupEditResident(UserModel user) {
+    nameController.text = user.name;
+    mobileController.text = user.mobile;
+    emailController.text = user.email;
+    flatNoController.text = user.flatNo ?? '';
+    blockController.text = user.block ?? '';
+    selectedFlatType.value = user.flatType ?? '2BHK';
+  }
+
+  Future<void> updateResident(UserModel user) async {
+    String name = nameController.text.trim();
+    String mobile = mobileController.text.trim();
+    String email = emailController.text.trim();
+    String flatNo = flatNoController.text.trim();
+    String block = blockController.text.trim();
+
+    if (name.isEmpty) {
+      _showError('Name is required');
+      return;
+    }
+    if (!_isValidMobile(mobile)) {
+      _showError('Enter a valid 10-digit mobile number starting with 6-9');
+      return;
+    }
+    if (flatNo.isEmpty) {
+      _showError('Flat number is required');
+      return;
+    }
+
+    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+      _showError('Please enter a valid email address');
+      return;
+    }
+
+    isLoading.value = true;
+    try {
+      if (mobile != user.mobile && await _firestoreService.isMobileDuplicated(mobile)) {
+        _showError('Mobile number already registered');
+        isLoading.value = false;
+        return;
+      }
+
+      if (flatNo != user.flatNo || block != user.block) {
+        if (await _firestoreService.isFlatDuplicated(user.societyId, flatNo, block)) {
+          _showError('Flat is already assigned');
+          isLoading.value = false;
+          return;
+        }
+      }
+
+      // NOTE: Case insensitivity for email is also maintained here by the server handling.
+      Map<String, dynamic> updateData = {
+        'name': name,
+        'mobile': '+91$mobile',
+        'email': email.toLowerCase(),
+        'flat_no': flatNo,
+        'flat_type': selectedFlatType.value,
+        'block': block.isEmpty ? null : block,
+      };
+
+      await _firestoreService.updateUser(user.id!, updateData);
+
+      _clearForm();
+      Get.back();
+      Get.snackbar(
+        '✅ Resident Updated',
+        '$name details have been updated',
+        backgroundColor: const Color(0xFF2E7D32),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(15),
+        duration: const Duration(seconds: 3),
+      );
+
       _refreshUsers();
     } catch (e) {
       _showError(e.toString());
@@ -251,6 +342,11 @@ class UserController extends GetxController {
       return;
     }
 
+    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+      _showError('Please enter a valid email address');
+      return;
+    }
+
     isLoading.value = true;
     try {
       String? creatorId = StorageService.getUserIdentifier();
@@ -258,7 +354,7 @@ class UserController extends GetxController {
       UserModel newUser = UserModel(
         name: name,
         email: email,
-        mobile: mobile,
+        mobile: '+91$mobile',
         role: 'guard',
         societyId: societyId,
         isActive: true,
@@ -309,6 +405,11 @@ class UserController extends GetxController {
       return;
     }
 
+    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+      _showError('Please enter a valid email address');
+      return;
+    }
+
     isLoading.value = true;
     try {
       String? creatorId = StorageService.getUserIdentifier();
@@ -316,7 +417,7 @@ class UserController extends GetxController {
       UserModel newUser = UserModel(
         name: name,
         email: email,
-        mobile: mobile,
+        mobile: '+91$mobile',
         role: 'admin',
         societyId: societyId,
         isActive: true,

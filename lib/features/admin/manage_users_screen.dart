@@ -375,40 +375,67 @@ class ManageUsersScreen extends StatelessWidget {
                     case 'delete':
                       controller.deleteUser(user);
                       break;
+                    case 'edit':
+                      if (user.role == 'resident') {
+                        Get.toNamed('/edit-resident', arguments: user);
+                      }
+                      break;
                   }
                 },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'toggle',
-                    child: Row(
-                      children: [
-                        Icon(
-                          user.isActive ? Icons.block_rounded : Icons.check_circle_outline_rounded,
-                          color: user.isActive ? Colors.orange : const Color(0xFF2E7D32),
-                          size: 20,
+                itemBuilder: (context) {
+                  List<PopupMenuEntry<String>> items = [];
+                  if (user.role == 'resident') {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit_rounded, color: Color(0xFF1565C0), size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Edit Details',
+                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          user.isActive ? 'Deactivate' : 'Activate',
-                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
-                        ),
-                      ],
+                      ),
+                    );
+                  }
+                  
+                  items.addAll([
+                    PopupMenuItem(
+                      value: 'toggle',
+                      child: Row(
+                        children: [
+                          Icon(
+                            user.isActive ? Icons.block_rounded : Icons.check_circle_outline_rounded,
+                            color: user.isActive ? Colors.orange : const Color(0xFF2E7D32),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            user.isActive ? 'Deactivate' : 'Activate',
+                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Remove User',
-                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.redAccent),
-                        ),
-                      ],
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Remove User',
+                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.redAccent),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ]);
+                  return items;
+                },
               ),
             ],
           ),

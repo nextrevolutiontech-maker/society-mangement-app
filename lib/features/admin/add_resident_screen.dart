@@ -163,6 +163,7 @@ class AddResidentScreen extends StatelessWidget {
               keyboardType: TextInputType.phone,
               maxLength: 10,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              isPhone: true,
             ),
             const SizedBox(height: 15),
 
@@ -183,8 +184,10 @@ class AddResidentScreen extends StatelessWidget {
             _buildTextField(
               controller: controller.flatNoController,
               label: 'Flat Number',
-              hint: 'e.g. A-101, 202',
+              hint: 'e.g. 101, 202',
               icon: Icons.home_rounded,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             ),
             const SizedBox(height: 15),
 
@@ -312,6 +315,7 @@ class AddResidentScreen extends StatelessWidget {
     TextCapitalization textCapitalization = TextCapitalization.none,
     int? maxLength,
     List<TextInputFormatter>? inputFormatters,
+    bool isPhone = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -341,7 +345,20 @@ class AddResidentScreen extends StatelessWidget {
             color: const Color(0xFF64748B),
           ),
           hintStyle: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF94A3B8)),
-          prefixIcon: Icon(icon, color: const Color(0xFF1565C0), size: 22),
+          prefixIcon: isPhone 
+            ? Container(
+                width: 70,
+                padding: const EdgeInsets.only(left: 15, right: 8),
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  children: [
+                    const Icon(Icons.phone_android_rounded, color: Color(0xFF1565C0), size: 18),
+                    const SizedBox(width: 4),
+                    Text('+91', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF1565C0))),
+                  ],
+                ),
+              )
+            : Icon(icon, color: const Color(0xFF1565C0), size: 22),
           counterText: '',
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),

@@ -16,6 +16,7 @@ import 'features/admin/super_admin_panel_screen.dart';
 import 'features/admin/manage_societies_screen.dart';
 import 'features/admin/manage_users_screen.dart';
 import 'features/admin/add_resident_screen.dart';
+import 'features/admin/edit_resident_screen.dart';
 import 'features/admin/add_guard_screen.dart';
 import 'features/admin/add_admin_screen.dart';
 import 'features/admin/payment_reports_screen.dart';
@@ -83,6 +84,7 @@ class SocietyApp extends StatelessWidget {
         GetPage(name: '/admin-dashboard', page: () => AdminDashboard()),
         GetPage(name: '/manage-users', page: () => ManageUsersScreen()),
         GetPage(name: '/add-resident', page: () => AddResidentScreen()),
+        GetPage(name: '/edit-resident', page: () => const EditResidentScreen()),
         GetPage(name: '/add-guard', page: () => AddGuardScreen()),
         GetPage(name: '/payment-reports', page: () => PaymentReportsScreen()),
 

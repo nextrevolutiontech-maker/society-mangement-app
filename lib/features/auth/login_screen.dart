@@ -69,15 +69,16 @@ class LoginScreen extends StatelessWidget {
                     keyboardType: TextInputType.phone,
                     maxLength: 10,
                     decoration: InputDecoration(
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          '+91  | ',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textBlack,
-                          ),
+                      prefixIcon: Container(
+                        width: 70,
+                        padding: const EdgeInsets.only(left: 15, right: 8),
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.phone_android_rounded, color: AppTheme.primaryBlue, size: 18),
+                            const SizedBox(width: 4),
+                            Text('+91', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue)),
+                          ],
                         ),
                       ),
                       hintText: '1234567890',

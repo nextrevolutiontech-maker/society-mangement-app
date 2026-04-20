@@ -33,7 +33,7 @@ class AuthService extends GetxService {
 
   // Check if user exists in Firestore and return role
   Future<String?> getUserRole(String email) async {
-    UserModel? user = await _firestoreService.getUserByEmail(email);
+    UserModel? user = await _firestoreService.getUserByEmail(email.toLowerCase());
     return user?.role;
   }
 

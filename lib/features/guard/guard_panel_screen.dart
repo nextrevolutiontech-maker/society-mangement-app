@@ -116,13 +116,13 @@ class GuardPanelScreen extends StatelessWidget {
 
                   // Mobile
                   _buildField(_mobileController, 'Mobile Number', Icons.phone_android_rounded, TextInputType.phone,
-                      maxLength: 10, formatters: [FilteringTextInputFormatter.digitsOnly]),
+                      maxLength: 10, formatters: [FilteringTextInputFormatter.digitsOnly], isPhone: true),
                   const SizedBox(height: 12),
 
                   // Flat + Block Row
                   Row(
                     children: [
-                      Expanded(child: _buildField(_flatController, 'Flat No', Icons.home_rounded, TextInputType.text)),
+                      Expanded(child: _buildField(_flatController, 'Flat No', Icons.home_rounded, TextInputType.number, formatters: [FilteringTextInputFormatter.digitsOnly])),
                       const SizedBox(width: 12),
                       Expanded(child: _buildField(_blockController, 'Block', Icons.business_rounded, TextInputType.text)),
                     ],
@@ -279,9 +279,20 @@ class GuardPanelScreen extends StatelessWidget {
                                   'Flat ${visitor['flat']}${visitor['block'].isNotEmpty ? " | Block ${visitor['block']}" : ""}',
                                   style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B)),
                                 ),
-                                Text(
-                                  visitor['time'],
-                                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF94A3B8)),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'In: ${visitor['time']}',
+                                      style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                                    ),
+                                    if (!isIn && visitor['checkout_time'] != null) ...[
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Out: ${visitor['checkout_time']}',
+                                        style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFFEF5350), fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
@@ -329,6 +340,7 @@ class GuardPanelScreen extends StatelessWidget {
     TextInputType keyboardType, {
     int? maxLength,
     List<TextInputFormatter>? formatters,
+    bool isPhone = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -343,7 +355,20 @@ class GuardPanelScreen extends StatelessWidget {
         inputFormatters: formatters,
         style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: const Color(0xFF00897B), size: 20),
+          prefixIcon: isPhone 
+            ? Container(
+                width: 65,
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  children: [
+                    const Icon(Icons.phone_android_rounded, color: Color(0xFF00897B), size: 18),
+                    const SizedBox(width: 4),
+                    Text('+91', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF00897B))),
+                  ],
+                ),
+              )
+            : Icon(icon, color: const Color(0xFF00897B), size: 20),
           hintText: hint,
           hintStyle: GoogleFonts.poppins(color: const Color(0xFF94A3B8), fontSize: 13),
           counterText: '',

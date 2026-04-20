@@ -49,6 +49,7 @@ class DashboardController extends GetxController {
   var currentUserFlat = ''.obs;
   var currentUserBlock = ''.obs;
   var currentUserMobile = ''.obs;
+  var societyName = ''.obs;
   var isLoadingUser = false.obs;
 
   // ── Resident Dashboard Data ───────────────────────────────
@@ -124,6 +125,13 @@ class DashboardController extends GetxController {
           currentUserMobile.value = user.mobile;
           if (user.flatNo != null) currentUserFlat.value = user.flatNo!;
           if (user.block != null) currentUserBlock.value = user.block!;
+
+          try {
+            final society = await _firestoreService.getSocietyById(user.societyId);
+            societyName.value = society?.name ?? 'your society hub';
+          } catch (e) {
+            societyName.value = 'your society hub';
+          }
 
           // Load role-specific data
           _loadRoleBasedData(user.role, user.societyId);
@@ -202,9 +210,9 @@ class DashboardController extends GetxController {
   void _loadGuardData(String societyId) {
     // Load today's visitor entries
     todayVisitors.value = [
-      {'name': 'Rahul Singh', 'mobile': '9876543210', 'flat': 'A-204', 'block': 'A', 'time': '09:45 AM', 'status': 'in'},
-      {'name': 'Amit Kumar', 'mobile': '8765432109', 'flat': 'B-102', 'block': 'B', 'time': '11:30 AM', 'status': 'out'},
-      {'name': 'Priya Sharma', 'mobile': '7654321098', 'flat': 'C-301', 'block': 'C', 'time': '01:15 PM', 'status': 'in'},
+      {'name': 'Rahul Singh', 'mobile': '+919876543210', 'flat': '204', 'block': 'A', 'time': '09:45 AM', 'status': 'in'},
+      {'name': 'Amit Kumar', 'mobile': '+918765432109', 'flat': '102', 'block': 'B', 'time': '11:30 AM', 'checkout_time': '12:45 PM', 'status': 'out'},
+      {'name': 'Priya Sharma', 'mobile': '+917654321098', 'flat': '301', 'block': 'C', 'time': '01:15 PM', 'status': 'in'},
     ];
   }
 
@@ -228,7 +236,7 @@ class DashboardController extends GetxController {
 
     todayVisitors.insert(0, {
       'name': name,
-      'mobile': mobile,
+      'mobile': mobile.startsWith('+91') ? mobile : '+91$mobile',
       'flat': flat,
       'block': block,
       'purpose': purpose ?? '',
@@ -392,9 +400,10 @@ class DashboardController extends GetxController {
 
   String getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour >= 5 && hour < 12) return 'Good Morning';
+    if (hour >= 12 && hour < 17) return 'Good Afternoon';
+    if (hour >= 17 && hour < 21) return 'Good Evening';
+    return 'Hello';
   }
 
   @override

@@ -197,7 +197,7 @@ class ResidentDashboard extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'Welcome to your society hub',
+                                  'Welcome to ${controller.societyName.value}',
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     color: const Color(0xFF94A3B8),

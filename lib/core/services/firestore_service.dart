@@ -26,7 +26,7 @@ class FirestoreService {
   /// Check if an email already exists in the system
   Future<bool> isEmailDuplicated(String email) async {
     try {
-      final query = await _users.where('email', isEqualTo: email).limit(1).get();
+      final query = await _users.where('email', isEqualTo: email.toLowerCase()).limit(1).get();
       return query.docs.isNotEmpty;
     } catch (e) {
       throw 'Database error: Unable to verify email.';
@@ -196,7 +196,7 @@ class FirestoreService {
   /// Get user data by email
   Future<UserModel?> getUserByEmail(String email) async {
     try {
-      final query = await _users.where('email', isEqualTo: email).limit(1).get();
+      final query = await _users.where('email', isEqualTo: email.toLowerCase()).limit(1).get();
       if (query.docs.isEmpty) return null;
 
       return UserModel.fromMap(

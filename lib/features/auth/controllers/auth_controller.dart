@@ -22,7 +22,7 @@ class AuthController extends GetxController {
       final User? user = await _authService.signInWithGoogle();
       if (user == null) return; // User cancelled
 
-      final String? email = user.email;
+      final String? email = user.email?.toLowerCase();
       if (email == null) {
         await _handleUserNotFound();
         return;
@@ -119,10 +119,11 @@ class AuthController extends GetxController {
       }
 
       // Lookup the user in Firestore — NO auto-creation
-      final userModel = await _authService.getUserByMobile(phone);
+      String formattedPhone = phone.startsWith('+91') ? phone : '+91$phone';
+      final userModel = await _authService.getUserByMobile(formattedPhone);
 
       if (userModel != null) {
-        await StorageService.saveUserSession(userModel.role, phone);
+        await StorageService.saveUserSession(userModel.role, formattedPhone);
         _navigateToDashboard(userModel.role);
       } else {
         // Firebase auth succeeded but user is NOT pre-registered → block access

@@ -17,7 +17,7 @@ class UserModel {
   UserModel({
     this.id,
     required this.name,
-    required this.email,
+    required String email,
     required this.mobile,
     required this.role,
     required this.societyId,
@@ -27,7 +27,7 @@ class UserModel {
     this.isActive = true,
     this.createdBy,
     this.createdAt,
-  });
+  }) : email = email.toLowerCase();
 
   Map<String, dynamic> toMap() {
     return {
@@ -49,7 +49,7 @@ class UserModel {
     return UserModel(
       id: documentId,
       name: map['name'] ?? '',
-      email: map['email'] ?? '',
+      email: (map['email'] ?? '').toString().toLowerCase(),
       mobile: map['mobile'] ?? '',
       role: map['role'] ?? '',
       societyId: map['society_id'] ?? '',
