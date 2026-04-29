@@ -26,67 +26,69 @@ class GuardPanelScreen extends StatelessWidget {
         slivers: [
           // ── App Bar ─────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 130,
+            expandedHeight: 95,
+            toolbarHeight: 95,
             floating: false,
             pinned: true,
             automaticallyImplyLeading: false,
             backgroundColor: const Color(0xFF00897B),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF00897B), Color(0xFF00695C)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+            elevation: 0,
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF00897B), Color(0xFF00695C)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                    child: Row(
+              ),
+            ),
+            title: GetBuilder<DashboardController>(
+              builder: (controller) => Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.security_rounded, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.security_rounded, color: Colors.white, size: 24),
+                        Text(
+                          controller.currentUserName.value,
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Guard Panel',
-                                style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
-                              ),
-                              Obx(() => Text(
-                                controller.currentUserName.value,
-                                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
-                              )),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Get.find<AuthController>().logout(),
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
-                          ),
+                        Text(
+                          '${controller.societyName.value} | Guard',
+                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                ),
+                  GestureDetector(
+                    onTap: () => Get.find<AuthController>().logout(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -94,43 +96,43 @@ class GuardPanelScreen extends StatelessWidget {
           // ── Body ────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Visitor Entry Form ─────────────────
                   Text(
                     'Visitor Entry',
-                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
+                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'Fill visitor details and check-in',
-                    style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8)),
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF94A3B8)),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
 
                   // Name
                   _buildField(_nameController, 'Visitor Name', Icons.person_rounded, TextInputType.text),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   // Mobile
                   _buildField(_mobileController, 'Mobile Number', Icons.phone_android_rounded, TextInputType.phone,
                       maxLength: 10, formatters: [FilteringTextInputFormatter.digitsOnly], isPhone: true),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   // Flat + Block Row
                   Row(
                     children: [
                       Expanded(child: _buildField(_flatController, 'Flat No', Icons.home_rounded, TextInputType.number, formatters: [FilteringTextInputFormatter.digitsOnly])),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(child: _buildField(_blockController, 'Block', Icons.business_rounded, TextInputType.text)),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   // Purpose
-                  _buildField(_purposeController, 'Purpose (Optional)', Icons.info_outline_rounded, TextInputType.text),
+                  _buildField(_purposeController, 'Purpose of Visit', Icons.info_outline_rounded, TextInputType.text),
 
                   const SizedBox(height: 22),
 
@@ -202,7 +204,7 @@ class GuardPanelScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          '${controller.todayVisitors.length} visitors',
+                          '${controller.allVisitors.length} visitors',
                           style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF00897B)),
                         ),
                       )),
@@ -211,7 +213,7 @@ class GuardPanelScreen extends StatelessWidget {
                   const SizedBox(height: 15),
 
                   Obx(() {
-                    if (controller.todayVisitors.isEmpty) {
+                    if (controller.allVisitors.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(30),
                         decoration: BoxDecoration(
@@ -231,19 +233,19 @@ class GuardPanelScreen extends StatelessWidget {
                     }
 
                     return Container(
+                      height: 400, // Fixed height to prevent infinite expansion
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 4))],
                       ),
                       child: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
                         padding: const EdgeInsets.all(8),
-                        itemCount: controller.todayVisitors.length,
+                        itemCount: controller.allVisitors.length,
+                        physics: const BouncingScrollPhysics(),
                         separatorBuilder: (context, index) => Divider(color: Colors.grey.shade100, height: 1),
                         itemBuilder: (context, index) {
-                          final visitor = controller.todayVisitors[index];
+                          final visitor = controller.allVisitors[index];
                           bool isIn = visitor['status'] == 'in';
 
                           return ListTile(
@@ -294,6 +296,13 @@ class GuardPanelScreen extends StatelessWidget {
                                     ],
                                   ],
                                 ),
+                                if (visitor['purpose'] != null && visitor['purpose'].toString().isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Purpose: ${visitor['purpose']}',
+                                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF00897B), fontWeight: FontWeight.w500, fontStyle: FontStyle.italic),
+                                  ),
+                                ],
                               ],
                             ),
                             trailing: Container(
@@ -355,20 +364,7 @@ class GuardPanelScreen extends StatelessWidget {
         inputFormatters: formatters,
         style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
-          prefixIcon: isPhone 
-            ? Container(
-                width: 65,
-                padding: const EdgeInsets.only(left: 12, right: 4),
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  children: [
-                    const Icon(Icons.phone_android_rounded, color: Color(0xFF00897B), size: 18),
-                    const SizedBox(width: 4),
-                    Text('+91', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF00897B))),
-                  ],
-                ),
-              )
-            : Icon(icon, color: const Color(0xFF00897B), size: 20),
+          prefixIcon: Icon(icon, color: const Color(0xFF00897B), size: 20),
           hintText: hint,
           hintStyle: GoogleFonts.poppins(color: const Color(0xFF94A3B8), fontSize: 13),
           counterText: '',
@@ -413,22 +409,30 @@ class GuardPanelScreen extends StatelessWidget {
                 style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 15),
-              ...visitors.map((v) {
-                int actualIndex = controller.todayVisitors.indexOf(v);
-                return ListTile(
-                  onTap: () {
-                    Get.back();
-                    controller.checkOutVisitor(actualIndex);
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: Get.height * 0.4),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: visitors.length,
+                  separatorBuilder: (_, __) => Divider(color: Colors.grey.shade100, height: 1),
+                  itemBuilder: (context, index) {
+                    final v = visitors[index];
+                    return ListTile(
+                      onTap: () async {
+                        Get.back();
+                        await controller.checkOutVisitor(v['id'], v['name']);
+                      },
+                      leading: CircleAvatar(
+                        backgroundColor: const Color(0xFF00897B).withOpacity(0.1),
+                        child: Text(v['name'][0], style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: const Color(0xFF00897B))),
+                      ),
+                      title: Text(v['name'], style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: Text('Flat ${v['flat']} | ${v['time']}', style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8))),
+                      trailing: const Icon(Icons.logout_rounded, color: Color(0xFFEF5350), size: 20),
+                    );
                   },
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF00897B).withOpacity(0.1),
-                    child: Text(v['name'][0], style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: const Color(0xFF00897B))),
-                  ),
-                  title: Text(v['name'], style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: Text('Flat ${v['flat']} | ${v['time']}', style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8))),
-                  trailing: const Icon(Icons.logout_rounded, color: Color(0xFFEF5350), size: 20),
-                );
-              }),
+                ),
+              ),
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,

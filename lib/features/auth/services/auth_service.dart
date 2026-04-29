@@ -37,6 +37,11 @@ class AuthService extends GetxService {
     return user?.role;
   }
 
+  // Get user by email from Firestore
+  Future<UserModel?> getUserByEmail(String email) async {
+    return await _firestoreService.getUserByEmail(email.toLowerCase());
+  }
+
   // Sign out
   Future<void> signOut() async {
     await _googleSignIn.signOut();

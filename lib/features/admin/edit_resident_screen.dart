@@ -35,7 +35,7 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
           onPressed: () => Get.back(),
         ),
         title: Text(
-          'Edit Resident',
+          'Edit ${user.role[0].toUpperCase()}${user.role.substring(1)}',
           style: GoogleFonts.poppins(
             color: const Color(0xFF263238),
             fontWeight: FontWeight.w700,
@@ -133,35 +133,37 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
 
             _buildTextField(
               controller: controller.emailController,
-              label: 'Email (Optional)',
+              label: 'Email Address',
               hint: 'Google Sign-In email',
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
             ),
 
             const SizedBox(height: 25),
-            _sectionLabel('Flat Details'),
-            const SizedBox(height: 12),
+            if (user.role == 'resident') ...[
+              _sectionLabel('Flat Details'),
+              const SizedBox(height: 12),
 
-            _buildTextField(
-              controller: controller.flatNoController,
-              label: 'Flat Number',
-              hint: 'e.g. 101, 202',
-              icon: Icons.home_rounded,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-            const SizedBox(height: 15),
+              _buildTextField(
+                controller: controller.flatNoController,
+                label: 'Flat Number',
+                hint: 'e.g. 101, 202',
+                icon: Icons.home_rounded,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              const SizedBox(height: 15),
 
-            _buildTextField(
-              controller: controller.blockController,
-              label: 'Block (Optional)',
-              hint: 'e.g. A, B, Tower-1',
-              icon: Icons.business_rounded,
-            ),
-            const SizedBox(height: 15),
+              _buildTextField(
+                controller: controller.blockController,
+                label: 'Block (Optional)',
+                hint: 'e.g. A, B, Tower-1',
+                icon: Icons.business_rounded,
+              ),
+              const SizedBox(height: 15),
 
-            _buildFlatTypeDropdown(),
+              _buildFlatTypeDropdown(),
+            ],
 
             const SizedBox(height: 35),
             
@@ -259,20 +261,7 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
             color: const Color(0xFF64748B),
           ),
           hintStyle: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF94A3B8)),
-          prefixIcon: isPhone 
-            ? Container(
-                width: 70,
-                padding: const EdgeInsets.only(left: 15, right: 8),
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  children: [
-                    const Icon(Icons.phone_android_rounded, color: Color(0xFF1565C0), size: 18),
-                    const SizedBox(width: 4),
-                    Text('+91', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF1565C0))),
-                  ],
-                ),
-              )
-            : Icon(icon, color: const Color(0xFF1565C0), size: 22),
+          prefixIcon: Icon(icon, color: const Color(0xFF1565C0), size: 22),
           counterText: '',
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),

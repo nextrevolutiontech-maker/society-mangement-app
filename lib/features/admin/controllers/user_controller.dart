@@ -16,6 +16,9 @@ class UserController extends GetxController {
   // ── Current Admin Info ────────────────────────────────────
   var currentAdminSocietyId = ''.obs;
   var currentAdminRole = ''.obs;
+  var isShowingSpecificSociety = false.obs;
+  var specificSocietyId = ''.obs;
+  var specificSocietyName = ''.obs;
 
   // ── User List State ───────────────────────────────────────
   var usersList = <UserModel>[].obs;
@@ -98,6 +101,7 @@ class UserController extends GetxController {
     if (currentAdminSocietyId.value.isEmpty) return;
     isUsersLoading.value = true;
     try {
+      if (isShowingSpecificSociety.value) return; // Don't overwrite if showing specific society
       usersList.value = await _firestoreService.getUsersBySociety(currentAdminSocietyId.value);
       _applyFilter();
       _updateCounts();
@@ -112,6 +116,7 @@ class UserController extends GetxController {
   Future<void> loadAllUsers() async {
     isUsersLoading.value = true;
     try {
+      if (isShowingSpecificSociety.value) return; // Don't overwrite if showing specific society
       usersList.value = await _firestoreService.getAllUsers();
       _applyFilter();
       _updateCounts();
@@ -120,6 +125,33 @@ class UserController extends GetxController {
     } finally {
       isUsersLoading.value = false;
     }
+  }
+
+  /// Load users for a specific society (used by Super Admin)
+  Future<void> loadUsersBySpecificSociety(String societyId, [String? societyName]) async {
+    isUsersLoading.value = true;
+    isShowingSpecificSociety.value = true;
+    specificSocietyId.value = societyId;
+    if (societyName != null) specificSocietyName.value = societyName;
+    
+    try {
+      usersList.clear(); // Clear old data
+      usersList.value = await _firestoreService.getUsersBySociety(societyId);
+      _applyFilter();
+      _updateCounts();
+    } catch (e) {
+      _showError('Failed to load society users: $e');
+    } finally {
+      isUsersLoading.value = false;
+    }
+  }
+
+  /// Clear the specific society filter and show all users (Super Admin)
+  Future<void> clearSpecificSocietyFilter() async {
+    isShowingSpecificSociety.value = false;
+    specificSocietyId.value = '';
+    specificSocietyName.value = '';
+    await loadAllUsers();
   }
 
   /// Apply role filter on the users list
@@ -169,7 +201,6 @@ class UserController extends GetxController {
       return;
     }
 
-    // Validation
     if (name.isEmpty) {
       _showError('Name is required');
       return;
@@ -182,8 +213,12 @@ class UserController extends GetxController {
       _showError('Flat number is required');
       return;
     }
+    if (email.isEmpty) {
+      _showError('Email is required');
+      return;
+    }
 
-    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+    if (!GetUtils.isEmail(email)) {
       _showError('Please enter a valid email address');
       return;
     }
@@ -234,7 +269,8 @@ class UserController extends GetxController {
 
   void setupEditResident(UserModel user) {
     nameController.text = user.name;
-    mobileController.text = user.mobile;
+    // Strip +91 for UI editing
+    mobileController.text = user.mobile.startsWith('+91') ? user.mobile.substring(3) : user.mobile;
     emailController.text = user.email;
     flatNoController.text = user.flatNo ?? '';
     blockController.text = user.block ?? '';
@@ -256,7 +292,7 @@ class UserController extends GetxController {
       _showError('Enter a valid 10-digit mobile number starting with 6-9');
       return;
     }
-    if (flatNo.isEmpty) {
+    if (user.role == 'resident' && flatNo.isEmpty) {
       _showError('Flat number is required');
       return;
     }
@@ -268,7 +304,8 @@ class UserController extends GetxController {
 
     isLoading.value = true;
     try {
-      if (mobile != user.mobile && await _firestoreService.isMobileDuplicated(mobile)) {
+      String fullMobile = '+91$mobile';
+      if (fullMobile != user.mobile && await _firestoreService.isMobileDuplicated(fullMobile)) {
         _showError('Mobile number already registered');
         isLoading.value = false;
         return;
@@ -341,8 +378,12 @@ class UserController extends GetxController {
       _showError('Enter a valid 10-digit mobile number starting with 6-9');
       return;
     }
+    if (email.isEmpty) {
+      _showError('Email is required');
+      return;
+    }
 
-    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+    if (!GetUtils.isEmail(email)) {
       _showError('Please enter a valid email address');
       return;
     }
@@ -404,8 +445,12 @@ class UserController extends GetxController {
       _showError('Please select a society for the admin');
       return;
     }
+    if (email.isEmpty) {
+      _showError('Email is required');
+      return;
+    }
 
-    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+    if (!GetUtils.isEmail(email)) {
       _showError('Please enter a valid email address');
       return;
     }
@@ -496,6 +541,26 @@ class UserController extends GetxController {
   Future<void> toggleUserStatus(UserModel user) async {
     try {
       if (user.id == null) return;
+
+      // 1. ROLE CHECK: Only Admin and Super Admin
+      if (currentAdminRole.value != 'admin' && currentAdminRole.value != 'super_admin') {
+        _showError('Unauthorized action.');
+        return;
+      }
+
+      // 2. SELF-CONTROL RESTRICTION: Cannot deactivate yourself
+      String? currentId = StorageService.getUserIdentifier();
+      if (currentId == user.mobile || currentId == user.email) {
+        _showError('You cannot activate/deactivate your own account.');
+        return;
+      }
+
+      // 3. SOCIETY SCOPE RESTRICTION: Admin only controls their society
+      if (currentAdminRole.value == 'admin' && user.societyId != currentAdminSocietyId.value) {
+        _showError('You can only manage users within your society.');
+        return;
+      }
+
       bool newStatus = !user.isActive;
       await _firestoreService.toggleUserStatus(user.id!, newStatus);
       Get.snackbar(

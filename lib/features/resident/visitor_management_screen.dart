@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:get/get.dart';
 import '../../core/theme.dart';
+import '../dashboard_controller.dart';
 
 class VisitorManagementScreen extends StatelessWidget {
-  const VisitorManagementScreen({super.key});
+  VisitorManagementScreen({super.key});
+
+  final DashboardController controller = Get.find<DashboardController>();
 
   @override
   Widget build(BuildContext context) {
@@ -65,144 +69,128 @@ class VisitorManagementScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Add Visitor Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 4))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Add Visitor',
-                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF263238)),
-                  ),
-                  const SizedBox(height: 15),
-                  const Divider(height: 1),
-                  _visitorInputItem(Icons.work_rounded, 'Rahul', const Color(0xFF1565C0), Colors.white),
-                  const Divider(height: 1),
-                  _visitorInputItem(Icons.call_rounded, '9876543210', Colors.transparent, const Color(0xFF1976D2)),
-                  const Divider(height: 1),
-                  _visitorInputItem(Icons.article_rounded, 'A-204', const Color(0xFF81D4FA), Colors.white),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // Action Buttons (Bigger and Bolder)
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 65, // Even bigger
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7CB342),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text(
-                        'Check In',
-                        style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: SizedBox(
-                    height: 65, 
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2C599D),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text(
-                        'Check Out',
-                        style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 35),
 
             // Visitor Logs Section
-            Text(
-              'Visitor Logs',
-              style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF263238)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Visitor Logs',
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF263238)),
+                ),
+                Obx(() => Text(
+                  '${controller.visitorHistory.length} Total',
+                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1976D2)),
+                )),
+              ],
             ),
             const SizedBox(height: 15),
-            _logItem('Rahul Checked In', '10:00 AM', const Color(0xFF00BFA5)),
-            const SizedBox(height: 12),
-            _logItem('Rahul Checked Out', '12:00 PM', const Color(0xFFFFB74D)),
+            Obx(() {
+              if (controller.visitorHistory.isEmpty && controller.todayVisitors.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(30.0),
+                    child: Text('No visitor records yet', style: GoogleFonts.poppins(color: Colors.grey)),
+                  ),
+                );
+              }
+              
+              var allLogs = [...controller.todayVisitors, ...controller.visitorHistory];
+              
+              // If Resident, only show logs for their flat
+              if (controller.currentUserRole.value == 'resident') {
+                allLogs = allLogs.where((log) => 
+                  log['flat'] == controller.currentUserFlat.value && 
+                  log['block'] == controller.currentUserBlock.value
+                ).toList();
+              }
+
+              // Remove duplicates if any
+              final uniqueLogs = <Map<String, dynamic>>[];
+              final seen = <String>{};
+              for (var log in allLogs) {
+                final key = log['id'] ?? '${log['name']}_${log['time']}';
+                if (!seen.contains(key)) {
+                  uniqueLogs.add(log);
+                  seen.add(key);
+                }
+              }
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: uniqueLogs.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final log = uniqueLogs[index];
+                  return _logItem(log);
+                },
+              );
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _visitorInputItem(IconData icon, String value, Color bgColor, Color iconColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 15),
+  Widget _logItem(Map<String, dynamic> log) {
+    bool isOut = log['status'] == 'out';
+    Color color = isOut ? const Color(0xFF94A3B8) : const Color(0xFF00BFA5);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
-            ),
-          ),
-          const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _logItem(String title, String time, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(isOut ? Icons.logout_rounded : Icons.login_rounded, color: color, size: 20),
           ),
           const SizedBox(width: 15),
           Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log['name'] ?? 'Unknown',
+                  style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
+                ),
+                Text(
+                  isOut ? 'Out: ${log['checkout_time']}' : 'In: ${log['time']}',
+                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                ),
+                if (log['purpose'] != null && log['purpose'].toString().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Purpose: ${log['purpose']}',
+                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+              ],
             ),
           ),
-          Text(
-            time,
-            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
-          ),
-          const SizedBox(width: 10),
-          const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
+          if (!isOut)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00BFA5).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Still Inside',
+                style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF00BFA5),
+                ),
+              ),
+            ),
         ],
       ),
     );

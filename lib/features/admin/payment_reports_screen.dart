@@ -1,8 +1,90 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+
+class PaymentReportsController extends GetxController {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  var totalCollected = 0.0.obs;
+  var thisMonthCollected = 0.0.obs;
+  var societyReports = <Map<String, dynamic>>[].obs;
+  var isLoading = true.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchReports();
+  }
+
+  Future<void> fetchReports() async {
+    try {
+      isLoading.value = true;
+      String currentMonth = DateFormat('MMMM yyyy').format(DateTime.now());
+
+      // Fetch all societies
+      final societySnapshot = await _firestore.collection('societies').get();
+      List<Map<String, dynamic>> reports = [];
+      double overallTotal = 0;
+      double overallThisMonth = 0;
+
+      for (var doc in societySnapshot.docs) {
+        String societyId = doc.id;
+        String societyName = doc.data()['name'] ?? 'Unknown Society';
+
+        // Fetch payments for this society
+        final paymentSnapshot = await _firestore
+            .collection('payments')
+            .where('societyId', isEqualTo: societyId)
+            .where('status', isEqualTo: 'Approved')
+            .get();
+
+        double societyTotal = 0;
+        int pendingCount = 0;
+
+        for (var payDoc in paymentSnapshot.docs) {
+          double amount = (payDoc.data()['amount'] ?? 0.0).toDouble();
+          String month = payDoc.data()['month'] ?? '';
+          
+          societyTotal += amount;
+          overallTotal += amount;
+          
+          if (month == currentMonth) {
+            overallThisMonth += amount;
+          }
+        }
+
+        // Fetch pending count
+        final pendingSnapshot = await _firestore
+            .collection('payments')
+            .where('societyId', isEqualTo: societyId)
+            .where('status', isEqualTo: 'Pending')
+            .get();
+        pendingCount = pendingSnapshot.docs.length;
+
+        reports.add({
+          'societyName': societyName,
+          'totalCollected': societyTotal,
+          'pendingCount': pendingCount,
+        });
+      }
+
+      totalCollected.value = overallTotal;
+      thisMonthCollected.value = overallThisMonth;
+      societyReports.value = reports;
+    } catch (e) {
+      debugPrint('Error fetching payment reports: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+}
 
 class PaymentReportsScreen extends StatelessWidget {
-  const PaymentReportsScreen({super.key});
+  PaymentReportsScreen({super.key});
+
+  final PaymentReportsController controller = Get.put(PaymentReportsController());
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +95,7 @@ class PaymentReportsScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF263238), size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Get.back(),
         ),
         title: Text(
           'Payment Reports',
@@ -21,35 +103,47 @@ class PaymentReportsScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          // Summary Row
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                _summaryBox('Total Collected', '₹8,50,000', const Color(0xFF1565C0)),
-                const SizedBox(width: 15),
-                _summaryBox('This Month', '₹2,50,000', const Color(0xFF2E7D32)),
-              ],
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return Column(
+          children: [
+            // Summary Row
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  _summaryBox('Total Collected', '₹${controller.totalCollected.value.toStringAsFixed(0)}', const Color(0xFF1565C0)),
+                  const SizedBox(width: 15),
+                  _summaryBox('This Month', '₹${controller.thisMonthCollected.value.toStringAsFixed(0)}', const Color(0xFF2E7D32)),
+                ],
+              ),
             ),
-          ),
-          
-          // Reports List
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                _reportItem('Gulshan-e-Iqbal', '₹45,000', '12 April 2026', 'Verified'),
-                _reportItem('DHA Phase 6', '₹1,20,000', '10 April 2026', 'Verified'),
-                _reportItem('Bahria Town', '₹85,000', '08 April 2026', 'Pending'),
-                _reportItem('Clifton Garden', '₹22,000', '05 April 2026', 'Verified'),
-                const SizedBox(height: 20),
-              ],
+            
+            // Reports List
+            Expanded(
+              child: controller.societyReports.isEmpty
+                  ? Center(
+                      child: Text('No reports available', style: GoogleFonts.poppins(color: Colors.grey.shade500)),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: controller.societyReports.length,
+                      itemBuilder: (context, index) {
+                        final report = controller.societyReports[index];
+                        return _reportItem(
+                          report['societyName'],
+                          '₹${report['totalCollected'].toStringAsFixed(0)}',
+                          '${report['pendingCount']} Pending',
+                        );
+                      },
+                    ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      }),
     );
   }
 
@@ -74,8 +168,7 @@ class PaymentReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _reportItem(String society, String amount, String date, String status) {
-    bool isVerified = status == 'Verified';
+  Widget _reportItem(String society, String amount, String pendingText) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
@@ -92,7 +185,7 @@ class PaymentReportsScreen extends StatelessWidget {
             children: [
               Text(society, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B))),
               const SizedBox(height: 4),
-              Text(date, style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+              Text(pendingText, style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFFEF6C00), fontWeight: FontWeight.w500)),
             ],
           ),
           Column(
@@ -102,9 +195,9 @@ class PaymentReportsScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(isVerified ? Icons.check_circle_rounded : Icons.pending_rounded, size: 12, color: isVerified ? const Color(0xFF2E7D32) : const Color(0xFFEF6C00)),
+                  const Icon(Icons.account_balance_wallet_rounded, size: 12, color: Color(0xFF2E7D32)),
                   const SizedBox(width: 4),
-                  Text(status, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: isVerified ? const Color(0xFF2E7D32) : const Color(0xFFEF6C00))),
+                  Text('Collected', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF2E7D32))),
                 ],
               ),
             ],

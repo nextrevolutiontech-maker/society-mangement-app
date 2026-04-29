@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/models/user_model.dart';
 import '../services/auth_service.dart';
 
 class AuthController extends GetxController {
@@ -32,6 +33,13 @@ class AuthController extends GetxController {
       final String? role = await _authService.getUserRole(email);
 
       if (role != null) {
+        // Fetch full user model to check status
+        final userModel = await _authService.getUserByEmail(email);
+        if (userModel != null && !userModel.isActive) {
+          await _handleInactiveUser();
+          return;
+        }
+
         await StorageService.saveUserSession(role, email);
         _navigateToDashboard(role);
       } else {
@@ -123,6 +131,10 @@ class AuthController extends GetxController {
       final userModel = await _authService.getUserByMobile(formattedPhone);
 
       if (userModel != null) {
+        if (!userModel.isActive) {
+          await _handleInactiveUser();
+          return;
+        }
         await StorageService.saveUserSession(userModel.role, formattedPhone);
         _navigateToDashboard(userModel.role);
       } else {
@@ -145,12 +157,29 @@ class AuthController extends GetxController {
   // ──────────────────────────────────────────────
   // Auto-login check (called from main.dart)
   // ──────────────────────────────────────────────
-  void checkLoginStatus() {
+  void checkLoginStatus() async {
     if (StorageService.isLoggedIn() && FirebaseAuth.instance.currentUser != null) {
       final String? role = StorageService.getUserRole();
-      if (role != null) {
-        _navigateToDashboard(role);
-        return;
+      final String? identifier = StorageService.getUserIdentifier();
+      
+      if (role != null && identifier != null) {
+        // Re-verify status from Firestore on app start
+        UserModel? user;
+        if (identifier.contains('@')) {
+          user = await _authService.getUserByEmail(identifier);
+        } else {
+          user = await _authService.getUserByMobile(identifier);
+        }
+
+        if (user != null && !user.isActive) {
+          await _handleInactiveUser();
+          return;
+        }
+
+        if (role != null) {
+          _navigateToDashboard(role);
+          return;
+        }
       }
     }
     // No valid session — clear and stay on login
@@ -161,25 +190,46 @@ class AuthController extends GetxController {
   // Logout
   // ──────────────────────────────────────────────
   void logout() async {
-    isLoading.value = true;
-    try {
-      await _authService.signOut();
-      await StorageService.clearSession();
-      phoneNumberController.clear();
-      otpController.clear();
-      isOtpSent.value = false;
-      Get.offAllNamed('/login');
-    } catch (e) {
-      Get.snackbar('Error', 'Logout failed: $e');
-    } finally {
-      isLoading.value = false;
-    }
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Get.back(); // Close dialog
+              isLoading.value = true;
+              try {
+                await _authService.signOut();
+                await StorageService.clearSession();
+                phoneNumberController.clear();
+                otpController.clear();
+                isOtpSent.value = false;
+                Get.offAllNamed('/login');
+              } catch (e) {
+                Get.snackbar('Error', 'Logout failed: $e');
+              } finally {
+                isLoading.value = false;
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   // ──────────────────────────────────────────────
   // Private Helpers
   // ──────────────────────────────────────────────
 
+  /// User authenticated with Firebase but has NO Firestore record.
+  /// Signs them out immediately and shows an informative message.
   /// User authenticated with Firebase but has NO Firestore record.
   /// Signs them out immediately and shows an informative message.
   Future<void> _handleUserNotFound() async {
@@ -195,6 +245,23 @@ class AuthController extends GetxController {
       colorText: Colors.white,
       margin: const EdgeInsets.all(15),
       duration: const Duration(seconds: 5),
+    );
+  }
+
+  /// User is registered but deactivated by admin.
+  Future<void> _handleInactiveUser() async {
+    await _authService.signOut();
+    await StorageService.clearSession();
+
+    Get.offAllNamed('/login');
+    Get.snackbar(
+      'Account Deactivated',
+      'Your account is deactivated. Please contact admin.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red.shade800,
+      colorText: Colors.white,
+      margin: const EdgeInsets.all(15),
+      duration: const Duration(seconds: 6),
     );
   }
 

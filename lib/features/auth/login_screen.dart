@@ -69,18 +69,7 @@ class LoginScreen extends StatelessWidget {
                     keyboardType: TextInputType.phone,
                     maxLength: 10,
                     decoration: InputDecoration(
-                      prefixIcon: Container(
-                        width: 70,
-                        padding: const EdgeInsets.only(left: 15, right: 8),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            const Icon(Icons.phone_android_rounded, color: AppTheme.primaryBlue, size: 18),
-                            const SizedBox(width: 4),
-                            Text('+91', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue)),
-                          ],
-                        ),
-                      ),
+                      prefixIcon: const Icon(Icons.phone_android_rounded, color: AppTheme.primaryBlue, size: 18),
                       hintText: '1234567890',
                       counterText: '', // Hide the 0/10 counter
                     ),

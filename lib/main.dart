@@ -7,8 +7,14 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/otp_screen.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'features/resident/dashboard_screen.dart';
-import 'features/resident/payment_screen.dart';
-import 'features/resident/complaint_screen.dart';
+
+import 'features/complaints/resident_raise_complaint_screen.dart';
+import 'features/complaints/resident_my_complaints_screen.dart';
+import 'features/complaints/admin_complaint_list_screen.dart';
+import 'features/complaints/super_admin_complaints_screen.dart';
+import 'features/payments/admin_payment_settings_screen.dart';
+import 'features/payments/admin_payment_list_screen.dart';
+import 'features/payments/resident_payment_dashboard.dart';
 import 'features/resident/visitor_management_screen.dart';
 import 'features/guard/guard_panel_screen.dart';
 import 'features/admin/admin_dashboard_screen.dart';
@@ -21,6 +27,7 @@ import 'features/admin/add_guard_screen.dart';
 import 'features/admin/add_admin_screen.dart';
 import 'features/admin/payment_reports_screen.dart';
 import 'features/admin/banner_settings_screen.dart';
+import 'features/admin/visitor_logs_screen.dart';
 
 import 'features/resident/notices_screen.dart';
 import 'features/resident/sos_screen.dart';
@@ -69,9 +76,11 @@ class SocietyApp extends StatelessWidget {
 
         // ── Resident ─────────────────────────────────────
         GetPage(name: '/dashboard', page: () => ResidentDashboard()),
-        GetPage(name: '/payment', page: () => const MaintenancePaymentScreen()),
-        GetPage(name: '/complaint', page: () => const RaiseComplaintScreen()),
-        GetPage(name: '/visitor-management', page: () => const VisitorManagementScreen()),
+        GetPage(name: '/payment', page: () => ResidentPaymentDashboard()),
+        GetPage(name: '/my-complaints', page: () => MyComplaintsScreen()),
+        GetPage(name: '/raise-complaint', page: () => RaiseComplaintScreen()),
+        GetPage(name: '/admin-complaints', page: () => AdminComplaintListScreen()),
+        GetPage(name: '/visitor-management', page: () => VisitorManagementScreen()),
         GetPage(name: '/notices', page: () => const NoticesScreen()),
         GetPage(name: '/sos', page: () => const SOSScreen()),
         GetPage(name: '/spin', page: () => const SpinScreen()),
@@ -84,15 +93,19 @@ class SocietyApp extends StatelessWidget {
         GetPage(name: '/admin-dashboard', page: () => AdminDashboard()),
         GetPage(name: '/manage-users', page: () => ManageUsersScreen()),
         GetPage(name: '/add-resident', page: () => AddResidentScreen()),
-        GetPage(name: '/edit-resident', page: () => const EditResidentScreen()),
+        GetPage(name: '/edit-resident', page: () => EditResidentScreen()),
         GetPage(name: '/add-guard', page: () => AddGuardScreen()),
-        GetPage(name: '/payment-reports', page: () => PaymentReportsScreen()),
+        GetPage(name: '/admin-payments', page: () => AdminPaymentListScreen()),
 
         // ── Super Admin ──────────────────────────────────
         GetPage(name: '/super-admin-panel', page: () => SuperAdminPanel()),
         GetPage(name: '/manage-societies', page: () => ManageSocietiesScreen()),
         GetPage(name: '/add-admin', page: () => AddAdminScreen()),
+        GetPage(name: '/payment-settings', page: () => AdminPaymentSettingsScreen()),
+        GetPage(name: '/payment-reports', page: () => PaymentReportsScreen()),
         GetPage(name: '/banner-settings', page: () => BannerSettingsScreen()),
+        GetPage(name: '/admin-visitor-logs', page: () => AdminVisitorLogsScreen()),
+        GetPage(name: '/super-admin-complaints', page: () => SuperAdminComplaintsScreen()),
       ],
     );
   }

@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'controllers/user_controller.dart';
 import '../../core/models/user_model.dart';
+import '../../core/services/storage_service.dart';
+import '../auth/controllers/auth_controller.dart';
 
 class ManageUsersScreen extends StatelessWidget {
   ManageUsersScreen({super.key});
@@ -20,16 +22,37 @@ class ManageUsersScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF263238), size: 20),
           onPressed: () => Get.back(),
         ),
-        title: Text(
-          'Manage Users',
-          style: GoogleFonts.poppins(
-            color: const Color(0xFF263238),
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
+        title: Obx(() => Column(
+          children: [
+            Text(
+              controller.isShowingSpecificSociety.value 
+                  ? 'Society Users' 
+                  : 'Manage Users',
+              style: GoogleFonts.poppins(
+                color: const Color(0xFF263238),
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            if (controller.isShowingSpecificSociety.value)
+              Text(
+                controller.specificSocietyName.value,
+                style: GoogleFonts.poppins(
+                  color: const Color(0xFF1565C0),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+          ],
+        )),
         centerTitle: true,
         actions: [
+          if (controller.isShowingSpecificSociety.value)
+            IconButton(
+              icon: const Icon(Icons.filter_alt_off_rounded, color: Colors.redAccent),
+              onPressed: () => controller.clearSpecificSocietyFilter(),
+              tooltip: 'Clear Filter',
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF1565C0), size: 26),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -182,7 +205,9 @@ class ManageUsersScreen extends StatelessWidget {
 
               return RefreshIndicator(
                 onRefresh: () async {
-                  if (controller.currentAdminRole.value == 'super_admin') {
+                  if (controller.isShowingSpecificSociety.value) {
+                    await controller.loadUsersBySpecificSociety(controller.specificSocietyId.value);
+                  } else if (controller.currentAdminRole.value == 'super_admin') {
                     await controller.loadAllUsers();
                   } else {
                     await controller.loadSocietyUsers();
@@ -331,7 +356,7 @@ class ManageUsersScreen extends StatelessWidget {
                     Icon(Icons.phone_rounded, size: 12, color: Colors.grey.shade400),
                     const SizedBox(width: 4),
                     Text(
-                      user.mobile,
+                      user.mobile.startsWith('+91') ? user.mobile.substring(3) : user.mobile,
                       style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8)),
                     ),
                   ],
@@ -376,64 +401,66 @@ class ManageUsersScreen extends StatelessWidget {
                       controller.deleteUser(user);
                       break;
                     case 'edit':
-                      if (user.role == 'resident') {
-                        Get.toNamed('/edit-resident', arguments: user);
-                      }
+                      Get.toNamed('/edit-resident', arguments: user);
                       break;
                   }
                 },
                 itemBuilder: (context) {
                   List<PopupMenuEntry<String>> items = [];
-                  if (user.role == 'resident') {
-                    items.add(
+                  items.add(
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.edit_rounded, color: Color(0xFF1565C0), size: 20),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Edit Details',
+                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+
+                  // 2. SELF-CONTROL RESTRICTION: Hide toggle/delete for self
+                  String? currentId = StorageService.getUserIdentifier();
+                  bool isSelf = (currentId == user.mobile || currentId == user.email);
+                  
+                  if (!isSelf) {
+                    items.addAll([
                       PopupMenuItem(
-                        value: 'edit',
+                        value: 'toggle',
                         child: Row(
                           children: [
-                            const Icon(Icons.edit_rounded, color: Color(0xFF1565C0), size: 20),
+                            Icon(
+                              user.isActive ? Icons.block_rounded : Icons.check_circle_outline_rounded,
+                              color: user.isActive ? Colors.orange : const Color(0xFF2E7D32),
+                              size: 20,
+                            ),
                             const SizedBox(width: 10),
                             Text(
-                              'Edit Details',
-                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
+                              user.isActive ? 'Deactivate' : 'Activate',
+                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
                       ),
-                    );
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Remove User',
+                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.redAccent),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]);
                   }
-                  
-                  items.addAll([
-                    PopupMenuItem(
-                      value: 'toggle',
-                      child: Row(
-                        children: [
-                          Icon(
-                            user.isActive ? Icons.block_rounded : Icons.check_circle_outline_rounded,
-                            color: user.isActive ? Colors.orange : const Color(0xFF2E7D32),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            user.isActive ? 'Deactivate' : 'Activate',
-                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Remove User',
-                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.redAccent),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ]);
                   return items;
                 },
               ),

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/services/storage_service.dart';
 import '../core/services/firestore_service.dart';
 import '../core/models/user_model.dart';
+import 'auth/controllers/auth_controller.dart';
 
 class DashboardController extends GetxController {
   final FirestoreService _firestoreService = FirestoreService();
@@ -17,14 +18,22 @@ class DashboardController extends GetxController {
     switch (index) {
       case 1:
         if (isPaymentsEnabled.value) {
-          Get.toNamed('/payment');
+          if (currentUserRole.value == 'admin' || currentUserRole.value == 'super_admin') {
+            Get.toNamed('/admin-payments');
+          } else {
+            Get.toNamed('/payment');
+          }
         } else {
           Get.snackbar('Disabled', 'Payments are disabled by admin');
         }
         break;
       case 2:
         if (isComplaintEnabled.value) {
-          Get.toNamed('/complaint');
+          if (currentUserRole.value == 'admin' || currentUserRole.value == 'super_admin') {
+            Get.toNamed('/admin-complaints');
+          } else {
+            Get.toNamed('/my-complaints');
+          }
         } else {
           Get.snackbar('Disabled', 'Complaints are disabled by admin');
         }
@@ -43,9 +52,11 @@ class DashboardController extends GetxController {
   }
 
   // ── Current User Data ─────────────────────────────────────
+  var currentUserId = ''.obs;
   var currentUserName = 'User'.obs;
   var currentUserRole = ''.obs;
-  var currentUserSociety = ''.obs;
+  var currentUserSociety = ''.obs;   // Society ID
+  var societyId = ''.obs;            // Same as currentUserSociety (shorthand)
   var currentUserFlat = ''.obs;
   var currentUserBlock = ''.obs;
   var currentUserMobile = ''.obs;
@@ -66,16 +77,12 @@ class DashboardController extends GetxController {
   var totalGuards = 0.obs;
   var pendingComplaints = 5.obs;
   var totalVisitorsToday = 12.obs;
-  var totalPaymentsCollected = '₹1.2L'.obs;
+  var totalPaymentsCollected = '₹0'.obs;
 
   // ── Super Admin Dashboard Counts ──────────────────────────
   var totalSocieties = 0.obs;
   var totalUsers = 0.obs;
   var activeUsers = 0.obs;
-
-  // ── Guard Dashboard Data ──────────────────────────────────
-  var todayVisitors = <Map<String, dynamic>>[].obs;
-  var isCheckingIn = false.obs;
 
   // ── Recent Activities ─────────────────────────────────────
   var recentActivities = <Map<String, String>>[].obs;
@@ -119,9 +126,17 @@ class DashboardController extends GetxController {
         }
 
         if (user != null) {
+          // CHECK STATUS: If deactivated, force logout
+          if (!user.isActive) {
+            Get.find<AuthController>().logout();
+            return;
+          }
+
+          currentUserId.value = user.id ?? '';
           currentUserName.value = user.name;
           currentUserRole.value = user.role;
           currentUserSociety.value = user.societyId;
+          societyId.value = user.societyId; // Keep both in sync
           currentUserMobile.value = user.mobile;
           if (user.flatNo != null) currentUserFlat.value = user.flatNo!;
           if (user.block != null) currentUserBlock.value = user.block!;
@@ -137,14 +152,21 @@ class DashboardController extends GetxController {
           _loadRoleBasedData(user.role, user.societyId);
         }
       }
+      update(); // Notify GetBuilder listeners
     } catch (e) {
       debugPrint('Error loading user profile: $e');
     } finally {
       isLoadingUser.value = false;
+      update();
     }
   }
 
   void _loadRoleBasedData(String role, String societyId) {
+    // Start listening to visitors for all roles that need it
+    if (societyId.isNotEmpty) {
+      _listenToVisitors(societyId);
+    }
+    
     switch (role) {
       case 'resident':
         _loadResidentData(societyId);
@@ -156,7 +178,7 @@ class DashboardController extends GetxController {
         _loadSuperAdminData();
         break;
       case 'guard':
-        _loadGuardData(societyId);
+        // Guard specific data if any
         break;
     }
     _loadBannerData(societyId);
@@ -181,6 +203,26 @@ class DashboardController extends GetxController {
       // Get real counts from Firestore
       totalResidents.value = await _firestoreService.countUsersByRole(societyId, 'resident');
       totalGuards.value = await _firestoreService.countUsersByRole(societyId, 'guard');
+      
+      // Get real payments collected
+      final paymentsSnapshot = await FirebaseFirestore.instance
+          .collection('payments')
+          .where('societyId', isEqualTo: societyId)
+          .where('status', isEqualTo: 'Approved')
+          .get();
+          
+      double total = 0;
+      for (var doc in paymentsSnapshot.docs) {
+        total += (doc.data()['amount'] ?? 0).toDouble();
+      }
+      
+      if (total >= 100000) {
+        totalPaymentsCollected.value = '₹${(total / 100000).toStringAsFixed(1)}L';
+      } else if (total >= 1000) {
+        totalPaymentsCollected.value = '₹${(total / 1000).toStringAsFixed(1)}K';
+      } else {
+        totalPaymentsCollected.value = '₹${total.toStringAsFixed(0)}';
+      }
     } catch (e) {
       debugPrint('Error loading admin data: $e');
     }
@@ -207,62 +249,89 @@ class DashboardController extends GetxController {
   // GUARD DATA
   // ════════════════════════════════════════════════════════════
 
-  void _loadGuardData(String societyId) {
-    // Load today's visitor entries
-    todayVisitors.value = [
-      {'name': 'Rahul Singh', 'mobile': '+919876543210', 'flat': '204', 'block': 'A', 'time': '09:45 AM', 'status': 'in'},
-      {'name': 'Amit Kumar', 'mobile': '+918765432109', 'flat': '102', 'block': 'B', 'time': '11:30 AM', 'checkout_time': '12:45 PM', 'status': 'out'},
-      {'name': 'Priya Sharma', 'mobile': '+917654321098', 'flat': '301', 'block': 'C', 'time': '01:15 PM', 'status': 'in'},
-    ];
+  // ── Guard Data & Visitors ──────────────────────────────
+  var allVisitors = <Map<String, dynamic>>[].obs;
+  var todayVisitors = <Map<String, dynamic>>[].obs;
+  var visitorHistory = <Map<String, dynamic>>[].obs;
+  var isCheckingIn = false.obs;
+
+  void _listenToVisitors(String societyId) {
+    _firestoreService.streamVisitorsBySociety(societyId).listen((visitors) {
+      // Sort locally by created_at (descending) to avoid needing a Firestore composite index
+      final sortedVisitors = List<Map<String, dynamic>>.from(visitors);
+      sortedVisitors.sort((a, b) {
+        final aTime = (a['created_at'] as Timestamp?)?.toDate() ?? DateTime(1970);
+        final bTime = (b['created_at'] as Timestamp?)?.toDate() ?? DateTime(1970);
+        return bTime.compareTo(aTime); // Newest first
+      });
+
+      allVisitors.value = sortedVisitors;
+      
+      // Separate today's (active) and history
+      todayVisitors.value = sortedVisitors.where((v) => v['status'] == 'in').toList();
+      visitorHistory.value = sortedVisitors.where((v) => v['status'] == 'out').toList();
+    });
   }
 
   /// Guard: Check-in a visitor
-  void checkInVisitor({
+  Future<void> checkInVisitor({
     required String name,
     required String mobile,
     required String flat,
     required String block,
     String? purpose,
-  }) {
-    if (name.isEmpty || mobile.isEmpty || flat.isEmpty) {
-      Get.snackbar('Missing Fields', 'Name, mobile, and flat are required',
-        backgroundColor: Colors.redAccent, colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(15));
+  }) async {
+    if (name.isEmpty || mobile.isEmpty || flat.isEmpty || (purpose ?? '').isEmpty) {
+      _showError('All fields including Purpose are required');
       return;
     }
 
-    final now = TimeOfDay.now();
-    final timeStr = '${now.hourOfPeriod == 0 ? 12 : now.hourOfPeriod}:${now.minute.toString().padLeft(2, '0')} ${now.period == DayPeriod.am ? 'AM' : 'PM'}';
+    try {
+      isCheckingIn.value = true;
+      final now = TimeOfDay.now();
+      final timeStr = '${now.hourOfPeriod == 0 ? 12 : now.hourOfPeriod}:${now.minute.toString().padLeft(2, '0')} ${now.period == DayPeriod.am ? 'AM' : 'PM'}';
 
-    todayVisitors.insert(0, {
-      'name': name,
-      'mobile': mobile.startsWith('+91') ? mobile : '+91$mobile',
-      'flat': flat,
-      'block': block,
-      'purpose': purpose ?? '',
-      'time': timeStr,
-      'status': 'in',
-    });
+      await _firestoreService.addVisitor({
+        'name': name,
+        'mobile': mobile.startsWith('+91') ? mobile : '+91$mobile',
+        'flat': flat,
+        'block': block,
+        'purpose': purpose ?? '',
+        'time': timeStr,
+        'status': 'in',
+        'society_id': currentUserSociety.value, // Use real society ID, not name!
+      });
 
-    Get.snackbar('✅ Checked In', '$name checked in for Flat $flat',
-      backgroundColor: const Color(0xFF2E7D32), colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(15));
+      Get.snackbar('✅ Checked In', '$name checked in for Flat $flat',
+        backgroundColor: const Color(0xFF2E7D32), colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(15));
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      isCheckingIn.value = false;
+    }
   }
 
   /// Guard: Check-out a visitor
-  void checkOutVisitor(int index) {
-    if (index >= 0 && index < todayVisitors.length) {
-      var visitor = Map<String, dynamic>.from(todayVisitors[index]);
+  Future<void> checkOutVisitor(String visitorId, String visitorName) async {
+    try {
       final now = TimeOfDay.now();
       final timeStr = '${now.hourOfPeriod == 0 ? 12 : now.hourOfPeriod}:${now.minute.toString().padLeft(2, '0')} ${now.period == DayPeriod.am ? 'AM' : 'PM'}';
-      visitor['status'] = 'out';
-      visitor['checkout_time'] = timeStr;
-      todayVisitors[index] = visitor;
+      
+      await _firestoreService.updateVisitorCheckout(visitorId, timeStr);
 
-      Get.snackbar('👋 Checked Out', '${visitor['name']} checked out',
+      Get.snackbar('👋 Checked Out', '$visitorName checked out',
         backgroundColor: Colors.orange.shade700, colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(15));
+    } catch (e) {
+      _showError(e.toString());
     }
+  }
+
+  void _showError(String message) {
+    Get.snackbar('Error', message,
+      backgroundColor: Colors.redAccent, colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(15));
   }
 
   // ════════════════════════════════════════════════════════════
@@ -404,6 +473,14 @@ class DashboardController extends GetxController {
     if (hour >= 12 && hour < 17) return 'Good Afternoon';
     if (hour >= 17 && hour < 21) return 'Good Evening';
     return 'Hello';
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  String formatPhoneForDisplay(String phone) {
+    if (phone.startsWith('+91')) {
+      return phone.substring(3);
+    }
+    return phone;
   }
 
   @override

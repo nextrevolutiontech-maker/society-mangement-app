@@ -312,20 +312,7 @@ class AddGuardScreen extends StatelessWidget {
             color: const Color(0xFF64748B),
           ),
           hintStyle: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF94A3B8)),
-          prefixIcon: isPhone 
-            ? Container(
-                width: 70,
-                padding: const EdgeInsets.only(left: 15, right: 8),
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  children: [
-                    const Icon(Icons.phone_android_rounded, color: Color(0xFF283593), size: 18),
-                    const SizedBox(width: 4),
-                    Text('+91', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF283593))),
-                  ],
-                ),
-              )
-            : Icon(icon, color: const Color(0xFF283593), size: 22),
+          prefixIcon: Icon(icon, color: const Color(0xFF283593), size: 22),
           counterText: '',
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),

@@ -330,8 +330,8 @@ class ManageSocietiesScreen extends StatelessWidget {
             children: [
               // View Users
               TextButton.icon(
-                onPressed: () {
-                  // Navigate to manage users for this society
+                onPressed: () async {
+                  await controller.loadUsersBySpecificSociety(society.id!, society.name);
                   Get.toNamed('/manage-users');
                 },
                 icon: const Icon(Icons.people_rounded, size: 16, color: Color(0xFF1565C0)),

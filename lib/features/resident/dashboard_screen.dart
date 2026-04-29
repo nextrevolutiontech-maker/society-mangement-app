@@ -50,45 +50,46 @@ class ResidentDashboard extends StatelessWidget {
   }
 
   Widget _buildBody() {
-    return Stack(
-      children: [
-        // ── Blue Header Background ────────────────────────
-        Container(
-          height: 160,
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return CustomScrollView(
+      slivers: [
+        // ── Sticky Header ───────────────────────────────
+        SliverAppBar(
+          expandedHeight: 95,
+          toolbarHeight: 95,
+          pinned: true,
+          automaticallyImplyLeading: false,
+          backgroundColor: const Color(0xFF1565C0),
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          title: GetBuilder<DashboardController>(
+            builder: (controller) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Menu / Avatar
+                  // Avatar
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
-                      child: Obx(() => Text(
+                      child: Text(
                         controller.currentUserName.value.isNotEmpty
                             ? controller.currentUserName.value[0].toUpperCase()
                             : 'U',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      )),
+                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -98,62 +99,41 @@ class ResidentDashboard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Home',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          controller.currentUserName.value,
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        Obx(() => Text(
-                          controller.currentUserFlat.value.isNotEmpty
-                              ? '${controller.currentUserBlock.value.isNotEmpty ? "${controller.currentUserBlock.value}-" : ""}${controller.currentUserFlat.value}'
-                              : 'Resident',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        )),
+                        Text(
+                          '${controller.societyName.value} | ${controller.currentUserFlat.value.isNotEmpty ? controller.currentUserFlat.value : "Resident"}',
+                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
                       ],
                     ),
                   ),
-                  // Notification Bell
+                  // Notice
                   GestureDetector(
                     onTap: () => Get.toNamed('/notices'),
                     child: Container(
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
-                          Positioned(
-                            right: 10,
-                            top: 10,
-                            child: CircleAvatar(radius: 4, backgroundColor: Color(0xFFFF5252)),
-                          ),
-                        ],
-                      ),
+                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
                     ),
                   ),
                   const SizedBox(width: 8),
                   // Logout
                   GestureDetector(
-                    onTap: () {
-                      final authController = Get.find<AuthController>();
-                      authController.logout();
-                    },
+                    onTap: () => Get.find<AuthController>().logout(),
                     child: Container(
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
                     ),
@@ -164,93 +144,39 @@ class ResidentDashboard extends StatelessWidget {
           ),
         ),
 
-        // ── White Content Area ────────────────────────────
-        Container(
-          margin: const EdgeInsets.only(top: 120),
-          decoration: const BoxDecoration(
-            color: Color(0xFFF8FAFF),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
-            ),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 25, 20, 20),
+        // ── Content Area ──────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Greeting ─────────────────────────────
-                Obx(() => controller.isLoadingUser.value
-                    ? const SizedBox(height: 30, width: 30, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${controller.getGreeting()}, ${controller.currentUserName.value.split(" ")[0]}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF1E293B),
-                                  ),
-                                ),
-                                Text(
-                                  'Welcome to ${controller.societyName.value}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    color: const Color(0xFF94A3B8),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Text('👋', style: TextStyle(fontSize: 28)),
-                        ],
-                      ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ── Banner Slider ────────────────────────
                 _buildBannerSlider(),
+                const SizedBox(height: 40),
 
-                const SizedBox(height: 25),
-
-                // ── Maintenance Card ─────────────────────
+                // Maintenance Card
                 _buildMaintenanceCard(),
+                const SizedBox(height: 40),
 
-                const SizedBox(height: 28),
-
-                // ── Quick Actions ────────────────────────
+                // Quick Actions
                 Text(
                   'Quick Actions',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1E293B),
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 0),
                 _buildQuickActions(),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 40),
 
-                // ── Recent Activity ──────────────────────
+                // Recent Activity
                 Text(
                   'Recent Activity',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1E293B),
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 40),
                 _buildRecentActivity(),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -259,10 +185,7 @@ class ResidentDashboard extends StatelessWidget {
     );
   }
 
-  // ══════════════════════════════════════════════════════════
-  // BANNER SLIDER (Super Admin controlled)
-  // ══════════════════════════════════════════════════════════
-
+  // Baner Slider Widget
   Widget _buildBannerSlider() {
     final List<List<Color>> gradients = [
       [const Color(0xFF1565C0), const Color(0xFF42A5F5)],
@@ -276,7 +199,7 @@ class ResidentDashboard extends StatelessWidget {
       return Column(
         children: [
           SizedBox(
-            height: 155,
+            height: 130,
             child: PageView.builder(
               controller: _bannerPageController,
               itemCount: controller.bannerImages.length,
@@ -286,6 +209,7 @@ class ResidentDashboard extends StatelessWidget {
                 final colors = gradients[index % gradients.length];
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 2),
+                  padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: colors,
@@ -301,7 +225,6 @@ class ResidentDashboard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.all(22),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -322,7 +245,7 @@ class ResidentDashboard extends StatelessWidget {
                         banner['subtitle'] ?? '',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                          fontSize: 17,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -333,7 +256,6 @@ class ResidentDashboard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // Dots indicator
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
@@ -357,14 +279,10 @@ class ResidentDashboard extends StatelessWidget {
     });
   }
 
-  // ══════════════════════════════════════════════════════════
-  // MAINTENANCE CARD
-  // ══════════════════════════════════════════════════════════
-
   Widget _buildMaintenanceCard() {
     return Obx(() => Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: controller.isMaintenancePaid.value
@@ -427,7 +345,7 @@ class ResidentDashboard extends StatelessWidget {
                     '₹${controller.maintenanceAmount.value.toStringAsFixed(0)}',
                     style: GoogleFonts.poppins(
                       color: Colors.white,
-                      fontSize: 34,
+                      fontSize: 28,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -470,10 +388,6 @@ class ResidentDashboard extends StatelessWidget {
     ));
   }
 
-  // ══════════════════════════════════════════════════════════
-  // QUICK ACTIONS GRID
-  // ══════════════════════════════════════════════════════════
-
   Widget _buildQuickActions() {
     return Obx(() => GridView.count(
       shrinkWrap: true,
@@ -486,7 +400,7 @@ class ResidentDashboard extends StatelessWidget {
         if (controller.isPaymentsEnabled.value)
           _quickAction(Icons.payment_rounded, 'Pay Now', const Color(0xFF1565C0), '/payment'),
         if (controller.isComplaintEnabled.value)
-          _quickAction(Icons.campaign_rounded, 'Complaint', const Color(0xFFE65100), '/complaint'),
+          _quickAction(Icons.campaign_rounded, 'Complaint', const Color(0xFFE65100), '/my-complaints'),
         if (controller.isVisitorsEnabled.value)
           _quickAction(Icons.group_rounded, 'Visitors', const Color(0xFF00897B), '/visitor-management'),
         _quickAction(Icons.notifications_active_rounded, 'Notices', const Color(0xFF6A1B9A), '/notices'),
@@ -518,12 +432,12 @@ class ResidentDashboard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: color, size: 26),
+              child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(height: 10),
             Text(
@@ -540,10 +454,6 @@ class ResidentDashboard extends StatelessWidget {
       ),
     );
   }
-
-  // ══════════════════════════════════════════════════════════
-  // RECENT ACTIVITY
-  // ══════════════════════════════════════════════════════════
 
   Widget _buildRecentActivity() {
     return Obx(() {
@@ -616,39 +526,25 @@ class ResidentDashboard extends StatelessWidget {
 
   Color _getActivityColor(String type) {
     switch (type) {
-      case 'visitor':
-        return const Color(0xFF00897B);
-      case 'payment':
-        return const Color(0xFF2E7D32);
-      case 'complaint':
-        return const Color(0xFFE65100);
-      case 'notice':
-        return const Color(0xFF6A1B9A);
-      case 'sos':
-        return const Color(0xFFD32F2F);
-      case 'spin':
-        return const Color(0xFFF9A825);
-      default:
-        return const Color(0xFF1565C0);
+      case 'visitor': return const Color(0xFF00897B);
+      case 'payment': return const Color(0xFF2E7D32);
+      case 'complaint': return const Color(0xFFE65100);
+      case 'notice': return const Color(0xFF6A1B9A);
+      case 'sos': return const Color(0xFFD32F2F);
+      case 'spin': return const Color(0xFFF9A825);
+      default: return const Color(0xFF1565C0);
     }
   }
 
   IconData _getActivityIcon(String type) {
     switch (type) {
-      case 'visitor':
-        return Icons.group_rounded;
-      case 'payment':
-        return Icons.payment_rounded;
-      case 'complaint':
-        return Icons.report_problem_rounded;
-      case 'notice':
-        return Icons.notifications_active_rounded;
-      case 'sos':
-        return Icons.emergency_rounded;
-      case 'spin':
-        return Icons.casino_rounded;
-      default:
-        return Icons.info_outline_rounded;
+      case 'visitor': return Icons.group_rounded;
+      case 'payment': return Icons.payment_rounded;
+      case 'complaint': return Icons.report_problem_rounded;
+      case 'notice': return Icons.notifications_active_rounded;
+      case 'sos': return Icons.emergency_rounded;
+      case 'spin': return Icons.casino_rounded;
+      default: return Icons.info_outline_rounded;
     }
   }
 }

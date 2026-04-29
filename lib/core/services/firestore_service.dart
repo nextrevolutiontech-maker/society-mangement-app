@@ -301,4 +301,44 @@ class FirestoreService {
             .map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
             .toList());
   }
+
+  // ════════════════════════════════════════════════════════════
+  // VISITOR MANAGEMENT
+  // ════════════════════════════════════════════════════════════
+
+  /// Add a new visitor entry
+  Future<void> addVisitor(Map<String, dynamic> visitorData) async {
+    try {
+      await _db.collection('visitors').add({
+        ...visitorData,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw 'Failed to add visitor: $e';
+    }
+  }
+
+  /// Update visitor checkout status
+  Future<void> updateVisitorCheckout(String visitorId, String checkoutTime) async {
+    try {
+      await _db.collection('visitors').doc(visitorId).update({
+        'status': 'out',
+        'checkout_time': checkoutTime,
+      });
+    } catch (e) {
+      throw 'Failed to update checkout: $e';
+    }
+  }
+
+  /// Stream all visitors for a specific society
+  Stream<List<Map<String, dynamic>>> streamVisitorsBySociety(String societyId) {
+    return _db.collection('visitors')
+        .where('society_id', isEqualTo: societyId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              var data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
+  }
 }

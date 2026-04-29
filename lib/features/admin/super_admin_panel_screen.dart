@@ -17,67 +17,65 @@ class SuperAdminPanel extends StatelessWidget {
         slivers: [
           // ── Gradient App Bar ─────────────────────────────
           SliverAppBar(
-            expandedHeight: 130,
+            expandedHeight: 95,
+            toolbarHeight: 95,
             floating: false,
             pinned: true,
             automaticallyImplyLeading: false,
             backgroundColor: const Color(0xFF0D47A1),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF0D47A1), Color(0xFF1A237E)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+            elevation: 0,
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0D47A1), Color(0xFF1A237E)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                    child: Row(
+              ),
+            ),
+            title: GetBuilder<DashboardController>(
+              builder: (controller) => Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.shield_rounded, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.shield_rounded, color: Colors.white, size: 24),
+                        Text(
+                          'Super Admin Panel',
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Super Admin Panel',
-                                style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
-                              ),
-                              Obx(() => Text(
-                                controller.currentUserName.value,
-                                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
-                              )),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Get.find<AuthController>().logout(),
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
-                          ),
+                        Text(
+                          controller.currentUserName.value,
+                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
-                ),
+                  GestureDetector(
+                    onTap: () => Get.find<AuthController>().logout(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -85,7 +83,7 @@ class SuperAdminPanel extends StatelessWidget {
           // ── Body ─────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -100,57 +98,59 @@ class SuperAdminPanel extends StatelessWidget {
                     ],
                   )),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 40),
 
                   // 2. PLATFORM CONTROLS
                   Text(
                     'Platform Controls',
                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 12),
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
-                    childAspectRatio: 2.4,
-                    mainAxisSpacing: 12,
+                    childAspectRatio: 2.8,
+                    mainAxisSpacing: 10,
                     crossAxisSpacing: 12,
                     children: [
                       _controlAction('Add Society', Icons.add_business_rounded, const Color(0xFF1565C0), () => Get.toNamed('/manage-societies')),
                       _controlAction('Add Admin', Icons.admin_panel_settings_rounded, const Color(0xFF6A1B9A), () => Get.toNamed('/add-admin')),
                       _controlAction('Manage Users', Icons.people_alt_rounded, const Color(0xFF00897B), () => Get.toNamed('/manage-users')),
+                      _controlAction('Visitor Logs', Icons.history_edu_rounded, const Color(0xFF00BFA5), () => Get.toNamed('/admin-visitor-logs')),
                       _controlAction('Banner Control', Icons.image_rounded, const Color(0xFFAD1457), () => Get.toNamed('/banner-settings')),
+                      _controlAction('Complaints', Icons.list_alt_rounded, const Color(0xFFE65100), () => Get.toNamed('/super-admin-complaints')),
                     ],
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 40),
 
                   // 3. PUSH NOTIFICATION
                   Text(
                     'Push Notification',
                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 12),
                   _buildPushNotificationCard(),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 40),
 
                   // 4. FEATURE TOGGLES
                   Text(
                     'Feature Toggles',
                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 12),
                   _buildFeatureToggles(),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 40),
 
                   // 5. RECENT ACTIVITY
                   Text(
                     'Recent Activity',
                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 12),
                   _buildRecentActivity(),
 
                   const SizedBox(height: 20),
@@ -170,7 +170,7 @@ class SuperAdminPanel extends StatelessWidget {
   Widget _globalStat(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
@@ -180,16 +180,24 @@ class SuperAdminPanel extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 18),
             ),
-            const SizedBox(height: 10),
-            Text(value, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-            Text(label, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF94A3B8))),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(value, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+            ),
+            Text(
+              label, 
+              style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w500, color: const Color(0xFF94A3B8)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

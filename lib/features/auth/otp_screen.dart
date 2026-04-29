@@ -61,7 +61,7 @@ class OTPScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'We have sent a code to +91 ${authController.phoneNumberController.text}',
+                    'We have sent a code to ${authController.phoneNumberController.text}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 14,

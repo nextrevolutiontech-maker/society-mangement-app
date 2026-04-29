@@ -17,93 +17,84 @@ class AdminDashboard extends StatelessWidget {
         slivers: [
           // ── Gradient App Bar ─────────────────────────────
           SliverAppBar(
-            expandedHeight: 130,
+            expandedHeight: 95,
+            toolbarHeight: 95,
             floating: false,
             pinned: true,
             automaticallyImplyLeading: false,
             backgroundColor: const Color(0xFF1565C0),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+            elevation: 0,
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+              ),
+            ),
+            title: GetBuilder<DashboardController>(
+              builder: (controller) => Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
+                        Text(
+                          controller.currentUserName.value,
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Admin Dashboard',
-                                style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
-                              ),
-                              Obx(() => Text(
-                                controller.currentUserName.value,
-                                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
-                              )),
-                            ],
-                          ),
-                        ),
-                        // Notification
-                        GestureDetector(
-                          onTap: () => Get.toNamed('/notices'),
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
-                                Positioned(
-                                  right: 9,
-                                  top: 9,
-                                  child: CircleAvatar(radius: 4, backgroundColor: Color(0xFFFF5252)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Logout
-                        GestureDetector(
-                          onTap: () => Get.find<AuthController>().logout(),
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
-                          ),
+                        Text(
+                          '${controller.societyName.value} | Admin',
+                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                ),
+                  // Notification
+                  GestureDetector(
+                    onTap: () => Get.toNamed('/notices'),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Logout
+                  GestureDetector(
+                    onTap: () => Get.find<AuthController>().logout(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -111,7 +102,7 @@ class AdminDashboard extends StatelessWidget {
           // ── Body Content ────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -120,14 +111,15 @@ class AdminDashboard extends StatelessWidget {
                     'Summary',
                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 12),
                   Obx(() => GridView.count(
+                    padding: EdgeInsets.zero,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
-                    childAspectRatio: 1.45,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
+                    childAspectRatio: 1.4,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
                     children: [
                       _summaryCard(
                         'Total Residents',
@@ -160,39 +152,41 @@ class AdminDashboard extends StatelessWidget {
                     ],
                   )),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 40),
 
                   // 2. MANAGE ACTIONS
                   Text(
                     'Manage Actions',
                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 12),
                   GridView.count(
+                    padding: EdgeInsets.zero,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
-                    childAspectRatio: 2.6,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
+                    childAspectRatio: 2.8,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
                     children: [
                       _actionButton('Add Resident', Icons.person_add_rounded, const Color(0xFF1565C0), '/add-resident'),
                       _actionButton('Add Guard', Icons.security_rounded, const Color(0xFF283593), '/add-guard'),
-                      _actionButton('Complaints', Icons.list_alt_rounded, const Color(0xFFE65100), '/complaint'),
-                      _actionButton('Payments', Icons.payments_rounded, const Color(0xFF2E7D32), '/payment-reports'),
+                      _actionButton('Complaints', Icons.list_alt_rounded, const Color(0xFFE65100), '/admin-complaints'),
+                      _actionButton('Payments', Icons.payments_rounded, const Color(0xFF2E7D32), '/admin-payments'),
                       _actionButton('Notices', Icons.campaign_rounded, const Color(0xFF6A1B9A), '/notices'),
+                      _actionButton('Visitor Logs', Icons.history_edu_rounded, const Color(0xFF00BFA5), '/admin-visitor-logs'),
                       _actionButton('All Users', Icons.people_alt_rounded, const Color(0xFF00897B), '/manage-users'),
                     ],
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 40),
 
                   // 3. RECENT ACTIVITY
                   Text(
                     'Recent Activity',
                     style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 12),
                   _buildRecentActivity(),
 
                   const SizedBox(height: 20),
@@ -211,7 +205,7 @@ class AdminDashboard extends StatelessWidget {
 
   Widget _summaryCard(String label, String value, IconData icon, Color color, Color bgColor) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12), // Reduced padding
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -225,16 +219,19 @@ class AdminDashboard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(4), // Even smaller padding
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 14), // Smaller icon
           ),
-          const SizedBox(height: 10),
-          Text(value, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B))),
-          Text(label, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF94A3B8))),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B))),
+          ),
+          Text(label, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w500, color: const Color(0xFF94A3B8)), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -258,6 +255,8 @@ class AdminDashboard extends StatelessWidget {
               child: Text(
                 label,
                 style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
