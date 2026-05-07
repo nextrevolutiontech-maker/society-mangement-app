@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'controllers/user_controller.dart';
+import '../dashboard_controller.dart';
 import '../../core/models/society_model.dart';
 
 class ManageSocietiesScreen extends StatelessWidget {
@@ -94,7 +96,7 @@ class ManageSocietiesScreen extends StatelessWidget {
             itemCount: controller.societiesList.length,
             itemBuilder: (context, index) {
               final society = controller.societiesList[index];
-              return _societyCard(society);
+              return _societyCard(context, society);
             },
           ),
         );
@@ -236,11 +238,136 @@ class ManageSocietiesScreen extends StatelessWidget {
     );
   }
 
+  void _showEditSocietyDialog(BuildContext context, SocietyModel society) {
+    controller.setupEditSociety(society);
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(25),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1565C0).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.edit_location_alt_rounded, color: Color(0xFF1565C0), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Edit Society',
+                      style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF263238)),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 25),
+
+                // Name
+                TextField(
+                  controller: controller.societyNameController,
+                  textCapitalization: TextCapitalization.words,
+                  style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                    labelText: 'Society Name',
+                    labelStyle: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                    prefixIcon: const Icon(Icons.business_rounded, color: Color(0xFF1565C0), size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFF),
+                  ),
+                ),
+                const SizedBox(height: 15),
+
+                // Address
+                TextField(
+                  controller: controller.societyAddressController,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 2,
+                  style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                    labelText: 'Address',
+                    labelStyle: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                    prefixIcon: const Icon(Icons.location_on_rounded, color: Color(0xFF1565C0), size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFF),
+                  ),
+                ),
+                const SizedBox(height: 15),
+
+                // Total Flats
+                TextField(
+                  controller: controller.societyFlatsController,
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                    labelText: 'Total Flats',
+                    labelStyle: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                    prefixIcon: const Icon(Icons.apartment_rounded, color: Color(0xFF1565C0), size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFF),
+                  ),
+                ),
+
+                const SizedBox(height: 25),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Get.back(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF64748B),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text('Cancel', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Obx(() => ElevatedButton(
+                        onPressed: controller.isLoading.value ? null : () => controller.updateSociety(society.id!),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1565C0),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 2,
+                        ),
+                        child: controller.isLoading.value
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Text('Save', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+                      )),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ══════════════════════════════════════════════════════════
   // SOCIETY CARD
   // ══════════════════════════════════════════════════════════
 
-  Widget _societyCard(SocietyModel society) {
+  Widget _societyCard(BuildContext context, SocietyModel society) {
     Color statusColor;
     switch (society.status) {
       case 'active':
@@ -341,16 +468,144 @@ class ManageSocietiesScreen extends StatelessWidget {
                 ),
               ),
 
-              // Delete
-              IconButton(
-                onPressed: () => controller.deleteSociety(society),
-                icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF5350), size: 22),
-                tooltip: 'Delete Society',
+              Row(
+                children: [
+                  // Edit Button
+                  IconButton(
+                    onPressed: () => _showEditSocietyDialog(context, society),
+                    icon: const Icon(Icons.edit_note_rounded, color: Color(0xFF1565C0), size: 24),
+                    tooltip: 'Edit Society',
+                  ),
+                  const SizedBox(width: 4),
+                  // Deactivate/Activate Toggle
+                  IconButton(
+                    onPressed: () => controller.toggleSocietyStatus(society),
+                    icon: Icon(
+                      society.status == 'active' ? Icons.power_settings_new_rounded : Icons.play_circle_outline_rounded,
+                      color: society.status == 'active' ? const Color(0xFFEF5350) : const Color(0xFF2E7D32),
+                      size: 22,
+                    ),
+                    tooltip: society.status == 'active' ? 'Deactivate Society' : 'Activate Society',
+                  ),
+                  const SizedBox(width: 4),
+                  // Feature Toggles Button
+                  IconButton(
+                    onPressed: () => _showFeatureTogglesDialog(context, society),
+                    icon: const Icon(Icons.tune_rounded, color: Color(0xFF1565C0), size: 22),
+                    tooltip: 'Manage Features',
+                  ),
+                  // Banner Management Button
+                  IconButton(
+                    onPressed: () => Get.toNamed('/banner-settings', arguments: {'societyId': society.id}),
+                    icon: const Icon(Icons.image_rounded, color: Color(0xFFAD1457), size: 22),
+                    tooltip: 'Society Banners',
+                  ),
+                ],
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  void _showFeatureTogglesDialog(BuildContext context, SocietyModel society) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(25),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.tune_rounded, color: Color(0xFF1565C0), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manage Features',
+                          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
+                        ),
+                        Text(
+                          society.name,
+                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1565C0)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Enable or disable modules for this society specifically.',
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance.collection('societies').doc(society.id).snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  
+                  final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                  final toggles = data['feature_toggles'] ?? {};
+  
+                  return Column(
+                    children: [
+                      _buildToggleItem('SOS Emergency', Icons.emergency_rounded, 'SOS', toggles['SOS'] ?? true, society.id!),
+                      _buildToggleItem('Complaints', Icons.campaign_rounded, 'Complaint', toggles['Complaint'] ?? true, society.id!),
+                      _buildToggleItem('Spin & Win', Icons.casino_rounded, 'Spin', toggles['Spin'] ?? true, society.id!),
+                      _buildToggleItem('Visitors', Icons.group_rounded, 'Visitors', toggles['Visitors'] ?? true, society.id!),
+                      _buildToggleItem('Payments', Icons.payment_rounded, 'Payments', toggles['Payments'] ?? true, society.id!),
+                      _buildToggleItem('Notices', Icons.notifications_active_rounded, 'Notices', toggles['Notices'] ?? true, society.id!),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggleItem(String label, IconData icon, String key, bool initialValue, String sId) {
+    final DashboardController dashboardController = Get.find<DashboardController>();
+    bool localValue = initialValue;
+    
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        return SwitchListTile(
+          secondary: Icon(icon, color: localValue ? const Color(0xFF1565C0) : Colors.grey, size: 20),
+          title: Text(label, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+          value: localValue,
+          activeColor: const Color(0xFF1565C0),
+          onChanged: (val) {
+            setLocalState(() {
+              localValue = val;
+            });
+            dashboardController.toggleFeature(key, targetSocietyId: sId);
+          },
+        );
+      },
     );
   }
 }

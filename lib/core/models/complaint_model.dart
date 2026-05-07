@@ -9,6 +9,8 @@ class ComplaintModel {
   final String status; // Open | In Progress | Resolved
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final DateTime? inProgressAt;
+  final DateTime? resolvedAt;
 
   ComplaintModel({
     required this.id,
@@ -21,6 +23,8 @@ class ComplaintModel {
     required this.status,
     required this.createdAt,
     this.updatedAt,
+    this.inProgressAt,
+    this.resolvedAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +39,8 @@ class ComplaintModel {
       'status': status,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
+      'inProgressAt': inProgressAt?.toIso8601String(),
+      'resolvedAt': resolvedAt?.toIso8601String(),
     };
   }
 
@@ -51,9 +57,9 @@ class ComplaintModel {
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt']) ?? DateTime.now()
           : DateTime.now(),
-      updatedAt: map['updatedAt'] != null
-          ? DateTime.tryParse(map['updatedAt'])
-          : null,
+      updatedAt: map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt']) : null,
+      inProgressAt: map['inProgressAt'] != null ? DateTime.tryParse(map['inProgressAt']) : null,
+      resolvedAt: map['resolvedAt'] != null ? DateTime.tryParse(map['resolvedAt']) : null,
     );
   }
 }

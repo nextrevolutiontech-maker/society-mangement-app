@@ -4,11 +4,13 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../payments/payment_controller.dart';
+import '../dashboard_controller.dart';
 
 class ResidentPaymentDashboard extends StatelessWidget {
   ResidentPaymentDashboard({super.key});
 
   final PaymentController controller = Get.put(PaymentController());
+  final DashboardController dashboardController = Get.find<DashboardController>();
 
   @override
   Widget build(BuildContext context) {
@@ -62,12 +64,17 @@ class ResidentPaymentDashboard extends StatelessWidget {
                   Obx(() {
                     double amount = controller.currentMaintenanceAmount.value;
                     double remaining = controller.getRemainingDues();
+                    final flatType = dashboardController.currentUserFlatType.value.isEmpty
+                        ? 'N/A'
+                        : dashboardController.currentUserFlatType.value;
                     
-                    if (amount == 0) {
+                    bool isSetupMissing = amount == 0 || controller.currentUpiId.value.isEmpty;
+                    
+                    if (isSetupMissing) {
                       return Column(
                         children: [
                           Text(
-                            'Maintenance Dues',
+                            'Maintenance Setup',
                             style: GoogleFonts.poppins(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 5),
@@ -75,16 +82,21 @@ class ResidentPaymentDashboard extends StatelessWidget {
                             currentMonth,
                             style: GoogleFonts.poppins(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 15),
+                          const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 40),
+                          const SizedBox(height: 15),
                           Text(
-                            'Not Configured',
-                            style: GoogleFonts.poppins(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+                            'Admin Setup Pending',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 25),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                            child: Text('No dues', style: GoogleFonts.poppins(color: Colors.white)),
+                          const SizedBox(height: 5),
+                          Text(
+                            amount == 0 
+                                ? 'Maintenance amount not set for $flatType'
+                                : 'Society UPI ID not configured by Admin',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70),
                           ),
                         ],
                       );
@@ -102,6 +114,11 @@ class ResidentPaymentDashboard extends StatelessWidget {
                         Text(
                           currentMonth,
                           style: GoogleFonts.poppins(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Flat Type: $flatType | Monthly: ₹${amount.toStringAsFixed(0)}',
+                          style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70),
                         ),
                         const SizedBox(height: 20),
                         Text(

@@ -326,7 +326,10 @@ class ManageUsersScreen extends StatelessWidget {
                   style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
                 ),
                 const SizedBox(height: 2),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -339,15 +342,31 @@ class ManageUsersScreen extends StatelessWidget {
                         style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w700, color: roleColor),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    if (user.flatNo != null && user.flatNo!.isNotEmpty) ...[
-                      Icon(Icons.home_rounded, size: 12, color: Colors.grey.shade400),
-                      const SizedBox(width: 3),
-                      Text(
-                        '${user.block != null && user.block!.isNotEmpty ? "${user.block}-" : ""}${user.flatNo}',
-                        style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B), fontWeight: FontWeight.w500),
+                    // Task 20: Show Society Name
+                    if (controller.currentAdminRole.value == 'super_admin')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          controller.getSocietyName(user.societyId),
+                          style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                        ),
                       ),
-                    ],
+                    if (user.flatNo != null && user.flatNo!.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.home_rounded, size: 12, color: Colors.grey.shade400),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${user.block != null && user.block!.isNotEmpty ? "${user.block}-" : ""}${user.flatNo}',
+                            style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B), fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -401,7 +420,11 @@ class ManageUsersScreen extends StatelessWidget {
                       controller.deleteUser(user);
                       break;
                     case 'edit':
-                      Get.toNamed('/edit-resident', arguments: user);
+                      if (user.role == 'admin') {
+                        Get.toNamed('/edit-admin', arguments: user);
+                      } else {
+                        Get.toNamed('/edit-resident', arguments: user);
+                      }
                       break;
                   }
                 },

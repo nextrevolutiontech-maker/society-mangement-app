@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +13,7 @@ class PaymentController extends GetxController {
 
   // Reactive state
   var currentMaintenanceAmount = 0.0.obs;
+  var currentFlatTypeAmounts = <String, double>{}.obs;
   var currentUpiId = ''.obs;
   var currentPaymentName = ''.obs;
   
@@ -25,32 +27,132 @@ class PaymentController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    
+    // Initial fetch attempts
     _fetchSocietyPaymentSettings();
     if (_dashboardController.currentUserRole.value == 'resident') {
       _fetchMyPayments();
     } else {
       _fetchAllPayments();
     }
+
+    // Task: Re-fetch whenever society ID or Role changes (e.g. after profile loads)
+    ever(_dashboardController.currentUserSociety, (_) {
+      _fetchSocietyPaymentSettings();
+      if (_dashboardController.currentUserRole.value == 'resident') {
+        _fetchMyPayments();
+      } else {
+        _fetchAllPayments();
+      }
+    });
+
+    // Task: Recalculate amount whenever resident's flat type is loaded/changed
+    ever(_dashboardController.currentUserFlatType, (_) {
+      currentMaintenanceAmount.value = _currentUserMaintenanceAmount();
+    });
   }
 
-  // Admin: Update Payment Settings
-  Future<void> updatePaymentSettings(double amount, String upiId, String name) async {
+  /// Saves UPI + display name only (flat-type slabs are edited via upsert/delete).
+  Future<void> savePaymentIdentifiers({required String upiId, required String name}) async {
+    final societyId = _dashboardController.currentUserSociety.value;
+    if (societyId.isEmpty) {
+      Get.snackbar('Error', 'Society ID not found. Please wait for profile to load or login again.', 
+        backgroundColor: Colors.redAccent, colorText: Colors.white);
+      return;
+    }
+
+    final trimmedUpi = upiId.trim();
+    final trimmedName = name.trim();
+    
+    // If not clearing, validate UPI format
+    if (trimmedUpi.isNotEmpty && !trimmedUpi.contains('@')) {
+      Get.snackbar('Invalid UPI', 'Please enter a valid UPI ID (e.g. name@bank)', 
+        backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+
+    isSettingsLoading.value = true;
+    try {
+      await _firestore.collection('societies').doc(societyId).set({
+        'upiId': trimmedUpi,
+        'paymentName': trimmedName,
+      }, SetOptions(merge: true));
+      
+      currentUpiId.value = trimmedUpi;
+      currentPaymentName.value = trimmedName;
+      
+      if (trimmedUpi.isEmpty) {
+        Get.snackbar('Deleted', 'UPI details cleared successfully', backgroundColor: Colors.orange, colorText: Colors.white);
+      } else {
+        Get.snackbar('Success', 'UPI details saved successfully', backgroundColor: Colors.green, colorText: Colors.white);
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to save UPI details: $e', backgroundColor: Colors.redAccent, colorText: Colors.white);
+    } finally {
+      isSettingsLoading.value = false;
+    }
+  }
+
+  Future<void> upsertFlatTypeAmount(String flatType, double amount) async {
     final societyId = _dashboardController.currentUserSociety.value;
     if (societyId.isEmpty) return;
+    final key = _normalizeFlatTypeKey(flatType);
+    if (key.isEmpty) {
+      Get.snackbar('Invalid', 'Flat / BHK type must be non-empty', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    if (amount <= 0) {
+      Get.snackbar('Invalid', 'Amount must be greater than 0', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+
+    isSettingsLoading.value = true;
+    try {
+      final docRef = _firestore.collection('societies').doc(societyId);
+      final doc = await docRef.get();
+      
+      if (!doc.exists) {
+        // Create empty doc first if it doesn't exist
+        await docRef.set({'maintenanceByFlatType': {}}, SetOptions(merge: true));
+      }
+
+      // Use dot notation to update only this specific key in the map
+      await docRef.update({
+        'maintenanceByFlatType.$key': amount,
+      });
+
+      final next = Map<String, double>.from(currentFlatTypeAmounts);
+      next[key] = amount;
+      currentFlatTypeAmounts.value = next;
+      currentMaintenanceAmount.value = _currentUserMaintenanceAmount();
+      Get.snackbar('Success', '$key amount saved', backgroundColor: Colors.green, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update $key: $e', backgroundColor: Colors.redAccent, colorText: Colors.white);
+    } finally {
+      isSettingsLoading.value = false;
+    }
+  }
+
+  Future<void> deleteFlatTypeAmount(String flatType) async {
+    final societyId = _dashboardController.currentUserSociety.value;
+    if (societyId.isEmpty) return;
+    final key = _normalizeFlatTypeKey(flatType);
+    if (key.isEmpty) return;
 
     isSettingsLoading.value = true;
     try {
       await _firestore.collection('societies').doc(societyId).update({
-        'maintenanceAmount': amount,
-        'upiId': upiId,
-        'paymentName': name,
+        'maintenanceByFlatType.$key': FieldValue.delete(),
       });
-      currentMaintenanceAmount.value = amount;
-      currentUpiId.value = upiId;
-      currentPaymentName.value = name;
-      Get.snackbar('Success', 'Payment settings updated', backgroundColor: Colors.green, colorText: Colors.white);
+      
+      final next = Map<String, double>.from(currentFlatTypeAmounts);
+      next.remove(key);
+      currentFlatTypeAmounts.value = next;
+
+      currentMaintenanceAmount.value = _currentUserMaintenanceAmount();
+      Get.snackbar('Deleted', '$key amount removed', backgroundColor: Colors.orange, colorText: Colors.white);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update settings: $e', backgroundColor: Colors.redAccent, colorText: Colors.white);
+      Get.snackbar('Error', 'Failed to delete $key: $e', backgroundColor: Colors.redAccent, colorText: Colors.white);
     } finally {
       isSettingsLoading.value = false;
     }
@@ -65,12 +167,28 @@ class PaymentController extends GetxController {
       final doc = await _firestore.collection('societies').doc(societyId).get();
       if (doc.exists) {
         final data = doc.data()!;
-        currentMaintenanceAmount.value = (data['maintenanceAmount'] ?? 0.0).toDouble();
+        final rawMap = data['maintenanceByFlatType'];
+        if (rawMap is Map) {
+          currentFlatTypeAmounts.value = _normalizeFlatTypeAmounts(rawMap);
+        } else {
+          final legacy = (data['maintenanceAmount'] ?? 0.0).toDouble();
+          if (legacy > 0) {
+            currentFlatTypeAmounts.value = {'Others': legacy};
+          } else {
+            currentFlatTypeAmounts.value = {};
+          }
+        }
+        currentMaintenanceAmount.value = _currentUserMaintenanceAmount();
         currentUpiId.value = data['upiId'] ?? '';
         currentPaymentName.value = data['paymentName'] ?? '';
+      } else {
+        currentFlatTypeAmounts.value = {};
+        currentMaintenanceAmount.value = _currentUserMaintenanceAmount();
       }
     } catch (e) {
       debugPrint('Error fetching society settings: $e');
+      currentFlatTypeAmounts.value = {};
+      currentMaintenanceAmount.value = _currentUserMaintenanceAmount();
     }
   }
 
@@ -121,8 +239,42 @@ class PaymentController extends GetxController {
         totalPaid += p.amount;
       }
     }
-    double remaining = currentMaintenanceAmount.value - totalPaid;
+    final monthlyAmount = _currentUserMaintenanceAmount();
+    if (currentMaintenanceAmount.value != monthlyAmount) {
+      currentMaintenanceAmount.value = monthlyAmount;
+    }
+    double remaining = monthlyAmount - totalPaid;
     return remaining > 0 ? remaining : 0.0;
+  }
+
+  double getAmountForFlatType(String flatType) {
+    if (flatType.isEmpty) return 0.0;
+    final k = _normalizeFlatTypeKey(flatType);
+    return currentFlatTypeAmounts[k] ?? 0.0;
+  }
+
+  String _normalizeFlatTypeKey(String s) => s.trim().toUpperCase();
+
+  double _currentUserMaintenanceAmount() {
+    final flatType = _normalizeFlatTypeKey(_dashboardController.currentUserFlatType.value);
+    final fromMap = getAmountForFlatType(flatType);
+    if (fromMap > 0) return fromMap;
+    // Residents with custom flat labels can still be mapped by admin via Others.
+    final othersAmount = getAmountForFlatType('Others');
+    if (othersAmount > 0) return othersAmount;
+    return 0.0;
+  }
+
+  Map<String, double> _normalizeFlatTypeAmounts(Map rawMap) {
+    final normalized = <String, double>{};
+    for (final e in rawMap.entries) {
+      final k = _normalizeFlatTypeKey('${e.key}');
+      if (k.isEmpty) continue;
+      final v = e.value;
+      final d = v is num ? v.toDouble() : double.tryParse('$v') ?? 0.0;
+      if (d > 0) normalized[k] = d;
+    }
+    return normalized;
   }
 
   // Resident: Initiate UPI Payment (Launch app)
@@ -138,24 +290,41 @@ class PaymentController extends GetxController {
     
     double amountToPay = getRemainingDues();
     if (amountToPay <= 0) {
-      Get.snackbar('Notice', 'Already paid for this month', backgroundColor: Colors.orange, colorText: Colors.white);
+      Get.snackbar('Notice', 'No pending dues for this month', backgroundColor: const Color(0xFF1565C0), colorText: Colors.white);
       return false;
     }
 
-    final String upiUrl = 'upi://pay?pa=${currentUpiId.value}&pn=${Uri.encodeComponent(currentPaymentName.value)}&am=${amountToPay.toStringAsFixed(2)}&cu=INR';
+    // Task 27: Validate UPI ID existence
+    if (currentUpiId.value.isEmpty || !currentUpiId.value.contains('@')) {
+      Get.snackbar('Payment Error', 'Society UPI ID is not configured properly by Admin.', 
+        backgroundColor: Colors.redAccent, colorText: Colors.white);
+      return false;
+    }
+
+    final String upiUrl = 'upi://pay?pa=${currentUpiId.value.trim()}&pn=${Uri.encodeComponent(currentPaymentName.value.trim())}&am=${amountToPay.toStringAsFixed(2)}&cu=INR';
     final Uri uri = Uri.parse(upiUrl);
 
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return true;
-      } else {
-        Get.snackbar('Error', 'No UPI app found on your device to handle the payment', backgroundColor: Colors.redAccent, colorText: Colors.white);
-        return false;
+      // Use externalApplication as it's more compatible with various Android versions
+      bool launched = await launchUrl(
+        uri, 
+        mode: LaunchMode.externalApplication,
+      );
+      
+      if (!launched) {
+        debugPrint('System could not launch $upiUrl');
+        await Clipboard.setData(ClipboardData(text: currentUpiId.value));
+        Get.snackbar('Manual Payment', 'Society UPI ID copied to clipboard. Please paste it in Paytm manually.', 
+          backgroundColor: Colors.orange, colorText: Colors.white);
+        return true; 
       }
+      return true;
     } catch (e) {
-      Get.snackbar('Error', 'Could not launch UPI app', backgroundColor: Colors.redAccent, colorText: Colors.white);
-      return false;
+      debugPrint('Error launching UPI: $e');
+      await Clipboard.setData(ClipboardData(text: currentUpiId.value));
+      Get.snackbar('Manual Payment', 'UPI ID copied. Please paste it in your payment app.', 
+        backgroundColor: Colors.orange, colorText: Colors.white);
+      return true;
     }
   }
 
@@ -192,7 +361,7 @@ class PaymentController extends GetxController {
   }
 
   // Admin: Update Payment Status
-  Future<void> updatePaymentStatus(String paymentId, String status) async {
+  Future<bool> updatePaymentStatus(String paymentId, String status) async {
     final adminName = _dashboardController.currentUserName.value;
     isActionLoading.value = true;
     try {
@@ -201,10 +370,30 @@ class PaymentController extends GetxController {
         'approvedAt': status == 'Approved' ? Timestamp.now() : null,
         'approvedBy': status == 'Approved' ? adminName : null,
       });
+
+      final idx = allPayments.indexWhere((p) => p.id == paymentId);
+      if (idx != -1) {
+        final prev = allPayments[idx];
+        allPayments[idx] = PaymentModel(
+          userId: prev.userId,
+          userName: prev.userName,
+          flatNumber: prev.flatNumber,
+          societyId: prev.societyId,
+          month: prev.month,
+          amount: prev.amount,
+          status: status,
+          createdAt: prev.createdAt,
+          approvedAt: status == 'Approved' ? DateTime.now() : null,
+          approvedBy: status == 'Approved' ? adminName : null,
+          id: prev.id,
+        );
+      }
+
       Get.snackbar('Success', 'Status updated to $status', backgroundColor: Colors.green, colorText: Colors.white);
-      Get.back(); // close detail screen
+      return true;
     } catch (e) {
       Get.snackbar('Error', 'Failed to update status: $e', backgroundColor: Colors.redAccent, colorText: Colors.white);
+      return false;
     } finally {
       isActionLoading.value = false;
     }

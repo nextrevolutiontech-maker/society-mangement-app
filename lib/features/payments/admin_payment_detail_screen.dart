@@ -103,7 +103,11 @@ class AdminPaymentDetailScreen extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: controller.isActionLoading.value
                           ? null
-                          : () => controller.updatePaymentStatus(payment.id!, 'Approved'),
+                          : () async {
+                              final ok =
+                                  await controller.updatePaymentStatus(payment.id!, 'Approved');
+                              if (ok) Get.offNamed('/admin-payments');
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF16A34A),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -120,7 +124,11 @@ class AdminPaymentDetailScreen extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: controller.isActionLoading.value
                           ? null
-                          : () => controller.updatePaymentStatus(payment.id!, 'Rejected'),
+                          : () async {
+                              final ok =
+                                  await controller.updatePaymentStatus(payment.id!, 'Rejected');
+                              if (ok) Get.offNamed('/admin-payments');
+                            },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFFEF4444)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

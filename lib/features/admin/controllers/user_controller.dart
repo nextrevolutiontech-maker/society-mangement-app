@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/models/society_model.dart';
 import '../../../core/services/firestore_service.dart';
@@ -10,8 +11,8 @@ class UserController extends GetxController {
 
   // ── Loading States ────────────────────────────────────────
   var isLoading = false.obs;
-  var isUsersLoading = false.obs;
-  var isSocietiesLoading = false.obs;
+  var isUsersLoading = true.obs;
+  var isSocietiesLoading = true.obs;
 
   // ── Current Admin Info ────────────────────────────────────
   var currentAdminSocietyId = ''.obs;
@@ -39,10 +40,12 @@ class UserController extends GetxController {
   final societyNameController = TextEditingController();
   final societyAddressController = TextEditingController();
   final societyFlatsController = TextEditingController();
+  final customFlatTypeController = TextEditingController();
 
   // ── Dropdown Observables ──────────────────────────────────
   var selectedFlatType = '2BHK'.obs;
-  final List<String> flatTypes = ['1BHK', '2BHK', '3BHK', '4BHK', '5BHK'];
+  var flatTypes = <String>['1BHK', '2BHK', '3BHK', '4BHK', '5BHK', 'Custom / Other'].obs;
+  var isCustomFlatType = false.obs;
 
   var selectedSocietyId = ''.obs;
 
@@ -55,11 +58,45 @@ class UserController extends GetxController {
   void onInit() {
     super.onInit();
     _loadCurrentAdminInfo();
+    
+    // Auto-fetch flat types when society ID changes
+    ever(currentAdminSocietyId, (sId) {
+      if (sId.isNotEmpty) fetchSocietyFlatTypes(sId);
+    });
+    
+    ever(selectedSocietyId, (sId) {
+      if (sId.isNotEmpty) fetchSocietyFlatTypes(sId);
+    });
   }
 
   // ════════════════════════════════════════════════════════════
   // INITIALIZATION
   // ════════════════════════════════════════════════════════════
+
+  Future<void> fetchSocietyFlatTypes(String sId) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('societies').doc(sId).get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data['maintenanceByFlatType'] != null) {
+          final Map<String, dynamic> slabs = Map<String, dynamic>.from(data['maintenanceByFlatType']);
+          if (slabs.isNotEmpty) {
+            // Get keys, sort them, and update list
+            final keys = slabs.keys.toList()..sort();
+            keys.add('Custom / Other');
+            flatTypes.assignAll(keys);
+            
+            // Update selected if current one isn't in the new list
+            if (!flatTypes.contains(selectedFlatType.value)) {
+              selectedFlatType.value = flatTypes.first;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching flat types: $e');
+    }
+  }
 
   Future<void> _loadCurrentAdminInfo() async {
     try {
@@ -234,7 +271,9 @@ class UserController extends GetxController {
         role: 'resident',
         societyId: societyId,
         flatNo: flatNo,
-        flatType: selectedFlatType.value,
+        flatType: selectedFlatType.value == 'Custom / Other' 
+            ? customFlatTypeController.text.trim() 
+            : selectedFlatType.value,
         block: block.isEmpty ? null : block,
         isActive: true,
         createdBy: creatorId,
@@ -242,7 +281,7 @@ class UserController extends GetxController {
 
       await _firestoreService.addUser(newUser);
 
-      _clearForm();
+      clearForm();
       Get.back();
       Get.snackbar(
         '✅ Resident Added',
@@ -274,7 +313,76 @@ class UserController extends GetxController {
     emailController.text = user.email;
     flatNoController.text = user.flatNo ?? '';
     blockController.text = user.block ?? '';
-    selectedFlatType.value = user.flatType ?? '2BHK';
+    
+    final ft = user.flatType ?? '2BHK';
+    if (flatTypes.contains(ft)) {
+      selectedFlatType.value = ft;
+      isCustomFlatType.value = false;
+      customFlatTypeController.clear();
+    } else {
+      selectedFlatType.value = 'Custom / Other';
+      isCustomFlatType.value = true;
+      customFlatTypeController.text = ft;
+    }
+  }
+
+  void setupEditAdmin(UserModel user) {
+    nameController.text = user.name;
+    mobileController.text = user.mobile.startsWith('+91') ? user.mobile.substring(3) : user.mobile;
+    emailController.text = user.email;
+    selectedSocietyId.value = user.societyId;
+    loadAllSocieties(); // Ensure list is loaded for dropdown
+  }
+
+  Future<void> updateAdmin(UserModel user) async {
+    String name = nameController.text.trim();
+    String mobile = mobileController.text.trim();
+    String email = emailController.text.trim();
+
+    if (name.isEmpty || mobile.isEmpty || email.isEmpty) {
+      _showError('All fields are required');
+      return;
+    }
+
+    if (!_isValidMobile(mobile)) {
+      _showError('Invalid mobile number');
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+
+      // Use user.id if available, otherwise fallback to mobile
+      final docId = user.id ?? user.mobile;
+
+      await FirebaseFirestore.instance.collection('users').doc(docId).update({
+        'name': name,
+        'mobile': '+91$mobile',
+        'email': email.toLowerCase(),
+        'society_id': selectedSocietyId.value,
+      });
+
+      Get.back();
+      Get.snackbar(
+        'Success',
+        'Admin updated successfully',
+        backgroundColor: Colors.green.withOpacity(0.1),
+        colorText: Colors.green,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(15),
+      );
+      
+      // Refresh list
+      if (isShowingSpecificSociety.value) {
+        await loadUsersBySpecificSociety(specificSocietyId.value);
+      } else {
+        await loadAllUsers();
+      }
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   Future<void> updateResident(UserModel user) async {
@@ -325,13 +433,15 @@ class UserController extends GetxController {
         'mobile': '+91$mobile',
         'email': email.toLowerCase(),
         'flat_no': flatNo,
-        'flat_type': selectedFlatType.value,
+        'flat_type': selectedFlatType.value == 'Custom / Other' 
+            ? customFlatTypeController.text.trim() 
+            : selectedFlatType.value,
         'block': block.isEmpty ? null : block,
       };
 
       await _firestoreService.updateUser(user.id!, updateData);
 
-      _clearForm();
+      clearForm();
       Get.back();
       Get.snackbar(
         '✅ Resident Updated',
@@ -404,7 +514,7 @@ class UserController extends GetxController {
 
       await _firestoreService.addUser(newUser);
 
-      _clearForm();
+      clearForm();
       Get.back();
       Get.snackbar(
         '✅ Guard Added',
@@ -471,7 +581,7 @@ class UserController extends GetxController {
 
       await _firestoreService.addUser(newUser);
 
-      _clearForm();
+      clearForm();
       Get.back();
       Get.snackbar(
         '✅ Admin Created',
@@ -542,27 +652,24 @@ class UserController extends GetxController {
     try {
       if (user.id == null) return;
 
-      // 1. ROLE CHECK: Only Admin and Super Admin
+      // 1. ROLE CHECK
       if (currentAdminRole.value != 'admin' && currentAdminRole.value != 'super_admin') {
         _showError('Unauthorized action.');
         return;
       }
 
-      // 2. SELF-CONTROL RESTRICTION: Cannot deactivate yourself
-      String? currentId = StorageService.getUserIdentifier();
-      if (currentId == user.mobile || currentId == user.email) {
-        _showError('You cannot activate/deactivate your own account.');
-        return;
-      }
-
-      // 3. SOCIETY SCOPE RESTRICTION: Admin only controls their society
-      if (currentAdminRole.value == 'admin' && user.societyId != currentAdminSocietyId.value) {
-        _showError('You can only manage users within your society.');
-        return;
-      }
-
       bool newStatus = !user.isActive;
+      
+      // OPTIMISTIC UPDATE: Update local list immediately for instant UI response
+      int index = usersList.indexWhere((u) => u.id == user.id);
+      if (index != -1) {
+        usersList[index] = usersList[index].copyWith(isActive: newStatus);
+        _applyFilter();
+        update(); 
+      }
+
       await _firestoreService.toggleUserStatus(user.id!, newStatus);
+      
       Get.snackbar(
         newStatus ? 'Activated' : 'Deactivated',
         '${user.name} is now ${newStatus ? "active" : "inactive"}',
@@ -570,10 +677,15 @@ class UserController extends GetxController {
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
         margin: const EdgeInsets.all(15),
+        duration: const Duration(seconds: 2),
       );
+      
+      // Still refresh from server to ensure sync
       _refreshUsers();
     } catch (e) {
-      _showError(e.toString());
+      _showError('Failed to update status: $e');
+      // Rollback on error
+      _refreshUsers();
     }
   }
 
@@ -623,32 +735,39 @@ class UserController extends GetxController {
     }
   }
 
-  Future<void> deleteSociety(SocietyModel society) async {
+  Future<void> toggleSocietyStatus(SocietyModel society) async {
     try {
       if (society.id == null) return;
 
+      String newStatus = society.status == 'active' ? 'inactive' : 'active';
+      
       bool? confirm = await Get.dialog<bool>(
         AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Delete Society'),
-          content: Text('Are you sure you want to delete "${society.name}"? This will NOT delete associated users.'),
+          title: Text(newStatus == 'inactive' ? 'Deactivate Society' : 'Activate Society'),
+          content: Text(newStatus == 'inactive' 
+            ? 'Are you sure you want to deactivate "${society.name}"? This will also deactivate ALL users in this society.'
+            : 'Are you sure you want to activate "${society.name}"?'),
           actions: [
             TextButton(onPressed: () => Get.back(result: false), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () => Get.back(result: true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: newStatus == 'inactive' ? Colors.redAccent : const Color(0xFF2E7D32)
+              ),
+              child: Text(newStatus == 'inactive' ? 'Deactivate' : 'Activate', style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
       );
 
       if (confirm == true) {
-        await _firestoreService.deleteSociety(society.id!);
+        isLoading.value = true;
+        await _firestoreService.updateSocietyStatus(society.id!, newStatus);
         Get.snackbar(
-          'Deleted',
-          '${society.name} has been removed',
-          backgroundColor: Colors.orange.shade700,
+          newStatus == 'active' ? 'Activated' : 'Deactivated',
+          '${society.name} is now ${newStatus == 'active' ? "Active" : "Inactive"}',
+          backgroundColor: newStatus == 'active' ? const Color(0xFF2E7D32) : Colors.orange.shade700,
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM,
           margin: const EdgeInsets.all(15),
@@ -657,15 +776,70 @@ class UserController extends GetxController {
       }
     } catch (e) {
       _showError(e.toString());
+    } finally {
+      isLoading.value = false;
     }
+  }
+
+  Future<void> updateSociety(String societyId) async {
+    String name = societyNameController.text.trim();
+    String address = societyAddressController.text.trim();
+    String flats = societyFlatsController.text.trim();
+
+    if (name.isEmpty || address.isEmpty) {
+      _showError('Society name and address are required');
+      return;
+    }
+
+    isLoading.value = true;
+    try {
+      await _firestoreService.updateSociety(societyId, {
+        'name': name,
+        'address': address,
+        'total_flats': flats.isEmpty ? null : flats,
+      });
+      _clearSocietyForm();
+      Get.back();
+      Get.snackbar(
+        '✅ Updated',
+        'Society details updated successfully',
+        backgroundColor: const Color(0xFF2E7D32),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(15),
+      );
+      await loadAllSocieties();
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void setupEditSociety(SocietyModel society) {
+    societyNameController.text = society.name;
+    societyAddressController.text = society.address;
+    societyFlatsController.text = society.totalFlats ?? '';
   }
 
   // ════════════════════════════════════════════════════════════
   // HELPERS
   // ════════════════════════════════════════════════════════════
 
+  String getSocietyName(String id) {
+    if (id.isEmpty) return 'No Society';
+    try {
+      final society = societiesList.firstWhere((s) => s.id == id);
+      return society.name;
+    } catch (_) {
+      return 'Unknown';
+    }
+  }
+
   void _refreshUsers() {
-    if (currentAdminRole.value == 'super_admin') {
+    if (isShowingSpecificSociety.value) {
+      loadUsersBySpecificSociety(specificSocietyId.value, specificSocietyName.value);
+    } else if (currentAdminRole.value == 'super_admin') {
       loadAllUsers();
     } else {
       loadSocietyUsers();
@@ -676,12 +850,14 @@ class UserController extends GetxController {
     return phone.length == 10 && RegExp(r'^[6-9]\d{9}$').hasMatch(phone);
   }
 
-  void _clearForm() {
+  void clearForm() {
     nameController.clear();
     mobileController.clear();
     flatNoController.clear();
     blockController.clear();
     emailController.clear();
+    customFlatTypeController.clear();
+    isCustomFlatType.value = false;
     selectedFlatType.value = '2BHK';
   }
 

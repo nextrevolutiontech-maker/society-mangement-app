@@ -8,7 +8,7 @@ import 'complaint_controller.dart';
 class MyComplaintsScreen extends StatelessWidget {
   MyComplaintsScreen({super.key});
 
-  final ComplaintController controller = Get.put(ComplaintController());
+  final ComplaintController controller = Get.find<ComplaintController>();
 
   @override
   Widget build(BuildContext context) {
@@ -61,70 +61,84 @@ class MyComplaintsScreen extends StatelessWidget {
           itemCount: controller.complaints.length,
           itemBuilder: (context, index) {
             final complaint = controller.complaints[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 15,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-                border: Border.all(color: Colors.grey.shade100),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            complaint.title,
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ),
-                        _buildStatusBadge(complaint.status),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      complaint.description,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: const Color(0xFF64748B),
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 16),
-                    Divider(color: Colors.grey.shade100, height: 1),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey.shade400),
-                        const SizedBox(width: 6),
-                        Text(
-                          DateFormat('MMM dd, yyyy - hh:mm a').format(complaint.createdAt),
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: const Color(0xFF94A3B8),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+            return GestureDetector(
+              onTap: () => _showComplaintDetails(context, complaint),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 15,
+                      offset: const Offset(0, 4),
                     ),
                   ],
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              complaint.title,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                          _buildStatusBadge(complaint.status),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        complaint.description,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF64748B),
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey.shade400),
+                              const SizedBox(width: 6),
+                              Text(
+                                DateFormat('MMM dd, yyyy').format(complaint.createdAt),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF94A3B8),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            'View Details →',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryBlue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -137,6 +151,77 @@ class MyComplaintsScreen extends StatelessWidget {
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text('New Complaint', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white)),
         elevation: 4,
+      ),
+    );
+  }
+
+  void _showComplaintDetails(BuildContext context, dynamic complaint) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildStatusBadge(complaint.status),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                complaint.title,
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                DateFormat('MMM dd, yyyy - hh:mm a').format(complaint.createdAt),
+                style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 10),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Text(
+                    complaint.description,
+                    style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF475569), height: 1.6),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Status Timeline',
+                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 12),
+              _buildTimelineItem('Complaint Filed', complaint.createdAt, Icons.add_circle_outline_rounded, Colors.orange),
+              if (complaint.inProgressAt != null)
+                _buildTimelineItem('Work Started', complaint.inProgressAt!, Icons.pending_actions_rounded, Colors.blue),
+              if (complaint.resolvedAt != null)
+                _buildTimelineItem('Complaint Resolved', complaint.resolvedAt!, Icons.check_circle_rounded, Colors.green),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('Close', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -176,6 +261,31 @@ class MyComplaintsScreen extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: textColor,
         ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(String title, DateTime date, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+                Text(DateFormat('MMM dd, yyyy - hh:mm a').format(date), style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF94A3B8))),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

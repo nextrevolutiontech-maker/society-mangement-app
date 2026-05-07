@@ -9,7 +9,7 @@ import 'admin_update_complaint_screen.dart';
 class AdminComplaintListScreen extends StatelessWidget {
   AdminComplaintListScreen({super.key});
 
-  final ComplaintController controller = Get.put(ComplaintController());
+  final ComplaintController controller = Get.find<ComplaintController>();
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +119,16 @@ class AdminComplaintListScreen extends StatelessWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF334155),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        complaint.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF64748B),
                         ),
                       ),
                       const SizedBox(height: 16),

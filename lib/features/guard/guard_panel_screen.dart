@@ -63,13 +63,13 @@ class GuardPanelScreen extends StatelessWidget {
                       children: [
                         Text(
                           controller.currentUserName.value,
-                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           '${controller.societyName.value} | Guard',
-                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -103,12 +103,12 @@ class GuardPanelScreen extends StatelessWidget {
                   // ── Visitor Entry Form ─────────────────
                   Text(
                     'Visitor Entry',
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
+                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Fill visitor details and check-in',
-                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF94A3B8)),
+                    style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF94A3B8)),
                   ),
                   const SizedBox(height: 12),
 
@@ -175,7 +175,7 @@ class GuardPanelScreen extends StatelessWidget {
                               _showCheckoutDialog();
                             },
                             icon: const Icon(Icons.logout_rounded, size: 20),
-                            label: Text('Check-Out', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14)),
+                            label: Text('Check-Out', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 16)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFFEF5350),
                               side: const BorderSide(color: Color(0xFFEF5350), width: 2),
@@ -195,7 +195,7 @@ class GuardPanelScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Today\'s Entries',
-                        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
+                        style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
                       ),
                       Obx(() => Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -205,7 +205,7 @@ class GuardPanelScreen extends StatelessWidget {
                         ),
                         child: Text(
                           '${controller.allVisitors.length} visitors',
-                          style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF00897B)),
+                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF00897B)),
                         ),
                       )),
                     ],
@@ -233,16 +233,15 @@ class GuardPanelScreen extends StatelessWidget {
                     }
 
                     return Container(
-                      height: 400, // Fixed height to prevent infinite expansion
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 4))],
                       ),
                       child: ListView.separated(
-                        padding: const EdgeInsets.all(8),
+                        shrinkWrap: true,
                         itemCount: controller.allVisitors.length,
-                        physics: const BouncingScrollPhysics(),
+                        physics: const NeverScrollableScrollPhysics(),
                         separatorBuilder: (context, index) => Divider(color: Colors.grey.shade100, height: 1),
                         itemBuilder: (context, index) {
                           final visitor = controller.allVisitors[index];
@@ -272,32 +271,32 @@ class GuardPanelScreen extends StatelessWidget {
                             ),
                             title: Text(
                               visitor['name'],
-                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
+                              style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
                             ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Flat ${visitor['flat']}${visitor['block'].isNotEmpty ? " | Block ${visitor['block']}" : ""}',
-                                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B)),
+                                  style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF64748B)),
                                 ),
-                                Row(
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 2,
                                   children: [
                                     Text(
                                       'In: ${visitor['time']}',
                                       style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w600),
                                     ),
-                                    if (!isIn && visitor['checkout_time'] != null) ...[
-                                      const SizedBox(width: 8),
+                                    if (!isIn && visitor['checkout_time'] != null)
                                       Text(
                                         'Out: ${visitor['checkout_time']}',
                                         style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFFEF5350), fontWeight: FontWeight.w600),
                                       ),
-                                    ],
                                   ],
                                 ),
                                 if (visitor['purpose'] != null && visitor['purpose'].toString().isNotEmpty) ...[
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 4),
                                   Text(
                                     'Purpose: ${visitor['purpose']}',
                                     style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF00897B), fontWeight: FontWeight.w500, fontStyle: FontStyle.italic),
@@ -328,7 +327,7 @@ class GuardPanelScreen extends StatelessWidget {
                     );
                   }),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 100), // Extra space at bottom
                 ],
               ),
             ),
@@ -362,11 +361,11 @@ class GuardPanelScreen extends StatelessWidget {
         keyboardType: keyboardType,
         maxLength: maxLength,
         inputFormatters: formatters,
-        style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: const Color(0xFF00897B), size: 20),
+          prefixIcon: Icon(icon, color: const Color(0xFF00897B), size: 22),
           hintText: hint,
-          hintStyle: GoogleFonts.poppins(color: const Color(0xFF94A3B8), fontSize: 13),
+          hintStyle: GoogleFonts.poppins(color: const Color(0xFF94A3B8), fontSize: 15),
           counterText: '',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
           filled: true,

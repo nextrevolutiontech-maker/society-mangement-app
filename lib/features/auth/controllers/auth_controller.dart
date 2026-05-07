@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/models/user_model.dart';
+import '../../complaints/complaint_controller.dart';
+import '../../dashboard_controller.dart';
 import '../services/auth_service.dart';
 
 class AuthController extends GetxController {
@@ -36,11 +38,17 @@ class AuthController extends GetxController {
         // Fetch full user model to check status
         final userModel = await _authService.getUserByEmail(email);
         if (userModel != null && !userModel.isActive) {
-          await _handleInactiveUser();
-          return;
+          if (userModel.role == 'super_admin') {
+            // Emergency Reactivation for Super Admin
+            await _authService.toggleUserStatus(userModel.id!, true);
+          } else {
+            await _handleInactiveUser();
+            return;
+          }
         }
 
         await StorageService.saveUserSession(role, email);
+        _syncComplaintsControllerAfterLogin();
         _navigateToDashboard(role);
       } else {
         await _handleUserNotFound();
@@ -132,10 +140,16 @@ class AuthController extends GetxController {
 
       if (userModel != null) {
         if (!userModel.isActive) {
-          await _handleInactiveUser();
-          return;
+          if (userModel.role == 'super_admin') {
+            // Emergency Reactivation for Super Admin
+            await _authService.toggleUserStatus(userModel.id!, true);
+          } else {
+            await _handleInactiveUser();
+            return;
+          }
         }
         await StorageService.saveUserSession(userModel.role, formattedPhone);
+        _syncComplaintsControllerAfterLogin();
         _navigateToDashboard(userModel.role);
       } else {
         // Firebase auth succeeded but user is NOT pre-registered → block access
@@ -172,14 +186,18 @@ class AuthController extends GetxController {
         }
 
         if (user != null && !user.isActive) {
-          await _handleInactiveUser();
-          return;
+          if (user.role == 'super_admin') {
+            // Emergency Reactivation for Super Admin
+            await _authService.toggleUserStatus(user.id!, true);
+          } else {
+            await _handleInactiveUser();
+            return;
+          }
         }
 
-        if (role != null) {
-          _navigateToDashboard(role);
-          return;
-        }
+        _syncComplaintsControllerAfterLogin();
+        _navigateToDashboard(role);
+        return;
       }
     }
     // No valid session — clear and stay on login
@@ -205,6 +223,7 @@ class AuthController extends GetxController {
               isLoading.value = true;
               try {
                 await _authService.signOut();
+                _clearComplaintsControllerOnLogout();
                 await StorageService.clearSession();
                 phoneNumberController.clear();
                 otpController.clear();
@@ -234,6 +253,7 @@ class AuthController extends GetxController {
   /// Signs them out immediately and shows an informative message.
   Future<void> _handleUserNotFound() async {
     await _authService.signOut();
+    _clearComplaintsControllerOnLogout();
     await StorageService.clearSession();
 
     Get.offAllNamed('/login');
@@ -251,6 +271,7 @@ class AuthController extends GetxController {
   /// User is registered but deactivated by admin.
   Future<void> _handleInactiveUser() async {
     await _authService.signOut();
+    _clearComplaintsControllerOnLogout();
     await StorageService.clearSession();
 
     Get.offAllNamed('/login');
@@ -265,7 +286,23 @@ class AuthController extends GetxController {
     );
   }
 
+  void _syncComplaintsControllerAfterLogin() {
+    if (Get.isRegistered<ComplaintController>()) {
+      Get.find<ComplaintController>().loadCurrentUser();
+    }
+  }
+
+  void _clearComplaintsControllerOnLogout() {
+    if (Get.isRegistered<ComplaintController>()) {
+      Get.find<ComplaintController>().clearForLogout();
+    }
+  }
+
   void _navigateToDashboard(String role) {
+    if (Get.isRegistered<DashboardController>()) {
+      Get.find<DashboardController>().fetchRealUserData();
+    }
+    
     switch (role) {
       case 'super_admin':
         Get.offAllNamed('/super-admin-panel');

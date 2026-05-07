@@ -7,7 +7,7 @@ import 'complaint_controller.dart';
 class RaiseComplaintScreen extends StatelessWidget {
   RaiseComplaintScreen({super.key});
 
-  final ComplaintController controller = Get.put(ComplaintController());
+  final ComplaintController controller = Get.find<ComplaintController>();
 
   @override
   Widget build(BuildContext context) {

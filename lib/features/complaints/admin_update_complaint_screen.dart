@@ -100,14 +100,31 @@ class _AdminUpdateComplaintScreenState extends State<AdminUpdateComplaintScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.complaint.title,
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.complaint.title,
+                          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
+                        ),
+                      ),
+                      _buildStatusBadge(selectedStatus),
+                    ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    widget.complaint.description,
-                    style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF475569), height: 1.5),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade100),
+                    ),
+                    child: Text(
+                      widget.complaint.description,
+                      style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF475569), height: 1.6),
+                    ),
                   ),
                 ],
               ),
@@ -116,7 +133,7 @@ class _AdminUpdateComplaintScreenState extends State<AdminUpdateComplaintScreen>
 
             // Update Status
             Text(
-              'Update Status',
+              'Change Status',
               style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
             ),
             const SizedBox(height: 12),
@@ -160,7 +177,37 @@ class _AdminUpdateComplaintScreenState extends State<AdminUpdateComplaintScreen>
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => controller.updateComplaintStatus(widget.complaint.id, selectedStatus),
+                    onPressed: () async {
+                      if (selectedStatus == widget.complaint.status) {
+                        Get.snackbar('Info', 'Status is already $selectedStatus', 
+                          backgroundColor: Colors.blueGrey, colorText: Colors.white);
+                        return;
+                      }
+
+                      final ok = await controller.updateComplaintStatus(
+                        widget.complaint.id,
+                        selectedStatus,
+                      );
+                      if (ok) {
+                        // Show success dialog before going back
+                        Get.dialog(
+                          AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 50),
+                            content: Text(
+                              'Complaint status updated to $selectedStatus!',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        );
+                        
+                        Future.delayed(const Duration(seconds: 2), () {
+                          Get.back(); // close dialog
+                          Get.back(); // go back to list
+                        });
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: AppTheme.primaryBlue,
@@ -246,5 +293,44 @@ class _AdminUpdateComplaintScreenState extends State<AdminUpdateComplaintScreen>
     final currentIdx = flow.indexOf(currentStatus);
     final targetIdx = flow.indexOf(targetStatus);
     return targetIdx < currentIdx; // Can't go backwards
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color bgColor;
+    Color textColor;
+
+    switch (status) {
+      case 'Open':
+        bgColor = const Color(0xFFFFF7ED);
+        textColor = const Color(0xFFEA580C);
+        break;
+      case 'In Progress':
+        bgColor = const Color(0xFFEFF6FF);
+        textColor = const Color(0xFF2563EB);
+        break;
+      case 'Resolved':
+        bgColor = const Color(0xFFF0FDF4);
+        textColor = const Color(0xFF16A34A);
+        break;
+      default:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade600;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status,
+        style: GoogleFonts.poppins(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
+    );
   }
 }

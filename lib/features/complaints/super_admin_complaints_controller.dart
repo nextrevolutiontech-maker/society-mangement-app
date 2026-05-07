@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,6 +15,10 @@ class SuperAdminComplaintsController extends GetxController {
   var isLoadingData = false.obs;
   var users = <UserModel>[].obs;
   var complaints = <ComplaintModel>[].obs;
+
+  // ── Stream Subscriptions ──────────────────────────────
+  StreamSubscription? _usersSubscription;
+  StreamSubscription? _complaintsSubscription;
 
   @override
   void onInit() {
@@ -39,37 +44,44 @@ class SuperAdminComplaintsController extends GetxController {
   void onSocietySelected(String? societyId) {
     if (societyId == null || societyId.isEmpty) return;
     selectedSocietyId.value = societyId;
-    _fetchSocietyData(societyId);
+    _listenToSocietyData(societyId);
   }
 
-  Future<void> _fetchSocietyData(String societyId) async {
+  void _listenToSocietyData(String societyId) {
     isLoadingData.value = true;
-    try {
-      // Fetch users for this society
-      final usersSnap = await _firestore
-          .collection('users')
-          .where('society_id', isEqualTo: societyId)
-          .get();
+    
+    // Cancel existing subscriptions
+    _usersSubscription?.cancel();
+    _complaintsSubscription?.cancel();
 
-      users.value = usersSnap.docs
+    // 1. Listen to users for this society
+    _usersSubscription = _firestore
+        .collection('users')
+        .where('society_id', isEqualTo: societyId)
+        .snapshots()
+        .listen((snap) {
+      users.value = snap.docs
           .map((doc) => UserModel.fromMap(doc.data(), doc.id))
           .toList();
+      isLoadingData.value = false; // Turn off loading when first batch arrives
+    }, onError: (e) {
+      debugPrint('Error listening to users: $e');
+      isLoadingData.value = false;
+    });
 
-      // Fetch all complaints for this society
-      final complaintsSnap = await _firestore
-          .collection('complaints')
-          .where('societyId', isEqualTo: societyId)
-          .get();
-
-      complaints.value = complaintsSnap.docs
+    // 2. Listen to all complaints for this society
+    _complaintsSubscription = _firestore
+        .collection('complaints')
+        .where('societyId', isEqualTo: societyId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((snap) {
+      complaints.value = snap.docs
           .map((doc) => ComplaintModel.fromMap(doc.data(), doc.id))
           .toList();
-
-    } catch (e) {
-      debugPrint('Error fetching society data: $e');
-    } finally {
-      isLoadingData.value = false;
-    }
+    }, onError: (e) {
+      debugPrint('Error listening to complaints: $e');
+    });
   }
 
   bool hasComplaint(String userId) {
@@ -78,5 +90,12 @@ class SuperAdminComplaintsController extends GetxController {
 
   List<ComplaintModel> getUserComplaints(String userId) {
     return complaints.where((c) => c.residentId == userId).toList();
+  }
+
+  @override
+  void onClose() {
+    _usersSubscription?.cancel();
+    _complaintsSubscription?.cancel();
+    super.onClose();
   }
 }

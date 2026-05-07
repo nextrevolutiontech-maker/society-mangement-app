@@ -4,10 +4,24 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'controllers/user_controller.dart';
 
-class AddResidentScreen extends StatelessWidget {
-  AddResidentScreen({super.key});
+class AddResidentScreen extends StatefulWidget {
+  const AddResidentScreen({super.key});
 
+  @override
+  State<AddResidentScreen> createState() => _AddResidentScreenState();
+}
+
+class _AddResidentScreenState extends State<AddResidentScreen> {
   final UserController controller = Get.put(UserController());
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure form is fresh every time screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.clearForm();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -360,45 +374,68 @@ class AddResidentScreen extends StatelessWidget {
   }
 
   Widget _buildFlatTypeDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Obx(() => DropdownButtonFormField<String>(
-        value: controller.selectedFlatType.value,
-        decoration: InputDecoration(
-          labelText: 'Flat Type',
-          labelStyle: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF64748B),
-          ),
-          prefixIcon: const Icon(Icons.apartment_rounded, color: Color(0xFF1565C0), size: 22),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+          child: Obx(() => DropdownButtonFormField<String>(
+            value: controller.flatTypes.contains(controller.selectedFlatType.value)
+                ? controller.selectedFlatType.value
+                : controller.flatTypes.first,
+            decoration: InputDecoration(
+              labelText: 'Flat Type',
+              labelStyle: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF64748B),
+              ),
+              prefixIcon: const Icon(Icons.apartment_rounded, color: Color(0xFF1565C0), size: 22),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            items: controller.flatTypes
+                .map((type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500)),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                controller.selectedFlatType.value = value;
+                controller.isCustomFlatType.value = (value == 'Custom / Other');
+              }
+            },
+            dropdownColor: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+          )),
         ),
-        items: controller.flatTypes
-            .map((type) => DropdownMenuItem(
-                  value: type,
-                  child: Text(type, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500)),
-                ))
-            .toList(),
-        onChanged: (value) {
-          if (value != null) controller.selectedFlatType.value = value;
-        },
-        dropdownColor: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
-      )),
+        
+        // Custom Flat Type Input
+        Obx(() => controller.isCustomFlatType.value
+            ? Padding(
+                padding: const EdgeInsets.only(top: 15),
+                child: _buildTextField(
+                  controller: controller.customFlatTypeController,
+                  label: 'Custom Flat Type Name',
+                  hint: 'e.g. Shop-5, Penthouse-B',
+                  icon: Icons.edit_note_rounded,
+                  textCapitalization: TextCapitalization.characters,
+                ),
+              )
+            : const SizedBox.shrink()),
+      ],
     );
   }
 }

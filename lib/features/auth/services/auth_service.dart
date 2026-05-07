@@ -100,4 +100,9 @@ class AuthService extends GetxService {
   Future<UserModel?> getUserByMobile(String mobile) async {
     return await _firestoreService.getUserByMobile(mobile);
   }
+
+  // Toggle user active status
+  Future<void> toggleUserStatus(String userId, bool isActive) async {
+    await _firestoreService.toggleUserStatus(userId, isActive);
+  }
 }

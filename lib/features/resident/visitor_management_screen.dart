@@ -70,42 +70,23 @@ class VisitorManagementScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // Visitor Logs Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Visitor Logs',
-                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF263238)),
-                ),
-                Obx(() => Text(
-                  '${controller.visitorHistory.length} Total',
-                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1976D2)),
-                )),
-              ],
-            ),
-            const SizedBox(height: 15),
             Obx(() {
-              if (controller.visitorHistory.isEmpty && controller.todayVisitors.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(30.0),
-                    child: Text('No visitor records yet', style: GoogleFonts.poppins(color: Colors.grey)),
-                  ),
-                );
-              }
-              
+              // 1. Combine All Logs
               var allLogs = [...controller.todayVisitors, ...controller.visitorHistory];
               
-              // If Resident, only show logs for their flat
+              // 2. Apply Role-based Filter (Privacy)
               if (controller.currentUserRole.value == 'resident') {
-                allLogs = allLogs.where((log) => 
-                  log['flat'] == controller.currentUserFlat.value && 
-                  log['block'] == controller.currentUserBlock.value
-                ).toList();
+                allLogs = allLogs.where((log) {
+                  final String logFlat = (log['flat'] ?? '').toString().trim().toLowerCase();
+                  final String userFlat = controller.currentUserFlat.value.trim().toLowerCase();
+                  final String logBlock = (log['block'] ?? '').toString().trim().toLowerCase();
+                  final String userBlock = controller.currentUserBlock.value.trim().toLowerCase();
+                  
+                  return logFlat == userFlat && (userBlock.isEmpty || logBlock == userBlock);
+                }).toList();
               }
 
-              // Remove duplicates if any
+              // 3. Remove duplicates
               final uniqueLogs = <Map<String, dynamic>>[];
               final seen = <String>{};
               for (var log in allLogs) {
@@ -116,15 +97,47 @@ class VisitorManagementScreen extends StatelessWidget {
                 }
               }
 
-              return ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: uniqueLogs.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final log = uniqueLogs[index];
-                  return _logItem(log);
-                },
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Updated Header Row with Filtered Count
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Visitor Logs',
+                        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF263238)),
+                      ),
+                      // Removed total count as per client requirement
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  
+                  if (uniqueLogs.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(40.0),
+                        child: Column(
+                          children: [
+                            Icon(Icons.history_rounded, size: 50, color: Colors.grey.shade300),
+                            const SizedBox(height: 10),
+                            Text('No visitor records for your flat', style: GoogleFonts.poppins(color: Colors.grey.shade500)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: uniqueLogs.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final log = uniqueLogs[index];
+                        return _logItem(log);
+                      },
+                    ),
+                ],
               );
             }),
           ],
@@ -160,10 +173,20 @@ class VisitorManagementScreen extends StatelessWidget {
                   log['name'] ?? 'Unknown',
                   style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
                 ),
-                Text(
-                  isOut ? 'Out: ${log['checkout_time']}' : 'In: ${log['time']}',
-                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
-                ),
+                if (isOut) ...[
+                  Text(
+                    'In: ${log['time']}',
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                  ),
+                  Text(
+                    'Out: ${log['checkout_time']}',
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                  ),
+                ] else
+                  Text(
+                    'In: ${log['time']}',
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                  ),
                 if (log['purpose'] != null && log['purpose'].toString().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),

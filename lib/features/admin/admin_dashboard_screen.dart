@@ -33,43 +33,48 @@ class AdminDashboard extends StatelessWidget {
                 ),
               ),
             ),
-            title: GetBuilder<DashboardController>(
-              builder: (controller) => Row(
+            title: Obx(() => Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                  GestureDetector(
+                    onTap: () => Get.toNamed('/profile'),
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 22),
                     ),
-                    child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          controller.currentUserName.value,
-                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          '${controller.societyName.value} | Admin',
-                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: GestureDetector(
+                      onTap: () => Get.toNamed('/profile'),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            controller.currentUserName.value,
+                            style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${controller.societyName.value} | Admin',
+                            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  // Notification
+                  // Profile Button
                   GestureDetector(
-                    onTap: () => Get.toNamed('/notices'),
+                    onTap: () => Get.toNamed('/profile'),
                     child: Container(
                       width: 40,
                       height: 40,
@@ -77,23 +82,39 @@ class AdminDashboard extends StatelessWidget {
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
+                      child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 22),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Logout
-                  GestureDetector(
-                    onTap: () => Get.find<AuthController>().logout(),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
+                  // Notification
+                  if (controller.isNoticeEnabled.value)
+                    GestureDetector(
+                      onTap: () => Get.toNamed('/notices'),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
                       ),
-                      child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
                     ),
-                  ),
+                  const SizedBox(width: 8),
+                  // Logout
+                  if (controller.currentUserRole.value == 'super_admin')
+                    GestureDetector(
+                      onTap: () => Get.find<AuthController>().logout(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -171,8 +192,10 @@ class AdminDashboard extends StatelessWidget {
                     children: [
                       _actionButton('Add Resident', Icons.person_add_rounded, const Color(0xFF1565C0), '/add-resident'),
                       _actionButton('Add Guard', Icons.security_rounded, const Color(0xFF283593), '/add-guard'),
+
                       _actionButton('Complaints', Icons.list_alt_rounded, const Color(0xFFE65100), '/admin-complaints'),
-                      _actionButton('Payments', Icons.payments_rounded, const Color(0xFF2E7D32), '/admin-payments'),
+                      _actionButton('Payment Approvals', Icons.payments_rounded, const Color(0xFF2E7D32), '/admin-payments'),
+                      _actionButton('Payment Settings', Icons.payments_outlined, const Color(0xFF1B5E20), '/payment-settings'),
                       _actionButton('Notices', Icons.campaign_rounded, const Color(0xFF6A1B9A), '/notices'),
                       _actionButton('Visitor Logs', Icons.history_edu_rounded, const Color(0xFF00BFA5), '/admin-visitor-logs'),
                       _actionButton('All Users', Icons.people_alt_rounded, const Color(0xFF00897B), '/manage-users'),

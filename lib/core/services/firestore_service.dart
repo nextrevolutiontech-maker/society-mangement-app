@@ -127,10 +127,9 @@ class FirestoreService {
     }
   }
 
-  /// Get all users across all societies (Super Admin)
   Future<List<UserModel>> getAllUsers() async {
     try {
-      final query = await _users.orderBy('created_at', descending: true).get();
+      final query = await _users.get();
       return query.docs
           .map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
@@ -242,10 +241,9 @@ class FirestoreService {
     }
   }
 
-  /// Get all societies
   Future<List<SocietyModel>> getAllSocieties() async {
     try {
-      final query = await _societies.orderBy('created_at', descending: true).get();
+      final query = await _societies.get();
       return query.docs
           .map((doc) => SocietyModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
@@ -274,12 +272,35 @@ class FirestoreService {
     }
   }
 
-  /// Update society status
+  /// Update society status AND toggle all its users (EXCLUDING Super Admins)
   Future<void> updateSocietyStatus(String societyId, String status) async {
     try {
       await _societies.doc(societyId).update({'status': status});
+      
+      // Toggle all users based on society status
+      bool newActiveStatus = (status == 'active');
+      
+      final usersSnapshot = await _users.where('society_id', isEqualTo: societyId).get();
+      WriteBatch batch = _db.batch();
+      for (var doc in usersSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        // Never touch Super Admin status automatically
+        if (data['role'] != 'super_admin') {
+          batch.update(doc.reference, {'is_active': newActiveStatus});
+        }
+      }
+      await batch.commit();
     } catch (e) {
       throw 'Failed to update society status: $e';
+    }
+  }
+
+  /// Update society details
+  Future<void> updateSociety(String societyId, Map<String, dynamic> data) async {
+    try {
+      await _societies.doc(societyId).update(data);
+    } catch (e) {
+      throw 'Failed to update society: $e';
     }
   }
 

@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/models/complaint_model.dart';
+import '../dashboard_controller.dart';
 
 class ComplaintController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -24,13 +26,31 @@ class ComplaintController extends GetxController {
   var currentUserId = ''.obs;
   var currentUserRole = ''.obs;
 
+  // ── Stream Subscriptions ──────────────────────────────
+  StreamSubscription? _complaintSubscription;
+
   @override
   void onInit() {
     super.onInit();
-    _loadCurrentUser();
+    loadCurrentUser();
   }
 
-  Future<void> _loadCurrentUser() async {
+  /// Clears Firestore listeners and cached list (call on logout).
+  void clearForLogout() {
+    _complaintSubscription?.cancel();
+    _complaintSubscription = null;
+    complaints.clear();
+    currentUserName.value = '';
+    currentUserFlat.value = '';
+    currentUserSocietyId.value = '';
+    currentUserId.value = '';
+    currentUserRole.value = '';
+    titleController.clear();
+    descriptionController.clear();
+    formKey.currentState?.reset();
+  }
+
+  Future<void> loadCurrentUser() async {
     isLoading.value = true;
     try {
       final identifier = StorageService.getUserIdentifier();
@@ -61,34 +81,52 @@ class ComplaintController extends GetxController {
         currentUserSocietyId.value = data['society_id'] ?? '';
         currentUserId.value = snap.docs.first.id;
 
-        // Now load the complaints for this user/society
-        _fetchComplaints();
+        // Now load the complaints for this user/society (Real-time)
+        _listenToComplaints();
       }
     } catch (e) {
-      debugPrint('ComplaintController._loadCurrentUser: $e');
+      debugPrint('ComplaintController.loadCurrentUser: $e');
     } finally {
       isLoading.value = false;
     }
   }
 
-  void _fetchComplaints() {
-    if (currentUserSocietyId.value.isEmpty) return;
-
-    Query query = _firestore
-        .collection('complaints')
-        .where('societyId', isEqualTo: currentUserSocietyId.value);
-
-    // Residents only see their own complaints
-    if (currentUserRole.value == 'resident') {
-      query = query.where('residentId', isEqualTo: currentUserId.value);
+  void _listenToComplaints() {
+    // Try to get society ID from local state, fallback to DashboardController
+    String sId = currentUserSocietyId.value;
+    if (sId.isEmpty) {
+      try {
+        final dbController = Get.find<DashboardController>();
+        sId = dbController.currentUserSociety.value;
+      } catch (_) {}
     }
 
-    query.orderBy('createdAt', descending: true).snapshots().listen((snap) {
-      complaints.value = snap.docs.map((doc) {
+    if (sId.isEmpty) {
+      debugPrint('ComplaintController: No society ID found. Skipping listener.');
+      return;
+    }
+
+    // Cancel existing subscription if any
+    _complaintSubscription?.cancel();
+
+    final Query query = _firestore
+        .collection('complaints')
+        .where('societyId', isEqualTo: sId)
+        .orderBy('createdAt', descending: true);
+
+    _complaintSubscription = query.snapshots().listen((snap) {
+      var list = snap.docs.map((doc) {
         return ComplaintModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
       }).toList();
+
+      if (currentUserRole.value == 'resident') {
+        final String rid = currentUserId.value;
+        list = list.where((c) => c.residentId == rid).toList();
+      }
+
+      complaints.value = list;
     }, onError: (e) {
-      debugPrint('ComplaintController._fetchComplaints stream error: $e');
+      debugPrint('ComplaintController._listenToComplaints error: $e');
     });
   }
 
@@ -121,21 +159,36 @@ class ComplaintController extends GetxController {
 
       await docRef.set(complaint.toMap());
 
+      // Immediate UI feedback before the Firestore snapshot round-trip (and safe if snapshot is delayed).
+      if (currentUserRole.value != 'resident' ||
+          complaint.residentId == currentUserId.value) {
+        complaints.removeWhere((c) => c.id == complaint.id);
+        complaints.insert(0, complaint);
+      }
+
       titleController.clear();
       descriptionController.clear();
 
-      Get.snackbar(
-        '✅ Complaint Submitted',
-        'Your complaint has been submitted successfully.',
-        backgroundColor: const Color(0xFF2E7D32),
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(15),
-        duration: const Duration(seconds: 3),
+      Get.dialog(
+        AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF2E7D32), size: 60),
+              const SizedBox(height: 15),
+              const Text('Submitted!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              const Text('Your complaint has been filed.', style: TextStyle(fontSize: 14)),
+            ],
+          ),
+        ),
       );
 
-      // Navigate to My Complaints
-      Get.offNamed('/my-complaints');
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        Get.back(); // Close dialog
+        Get.back(); // Go back to list
+      });
     } catch (e) {
       _showError('Failed to submit complaint. Please try again.');
       debugPrint('submitComplaint error: $e');
@@ -145,7 +198,7 @@ class ComplaintController extends GetxController {
   }
 
   // ── Update complaint status (Admin only) ──────────────
-  Future<void> updateComplaintStatus(String complaintId, String newStatus) async {
+  Future<bool> updateComplaintStatus(String complaintId, String newStatus) async {
     // Enforce forward-only flow
     const flow = ['Open', 'In Progress', 'Resolved'];
     final complaint = complaints.firstWhere((c) => c.id == complaintId);
@@ -154,14 +207,46 @@ class ComplaintController extends GetxController {
 
     if (newIdx <= currentIdx) {
       _showError('Status can only move forward: Open → In Progress → Resolved');
-      return;
+      return false;
     }
 
     try {
+      final now = DateTime.now();
+      Map<String, dynamic> updateData = {
+        'status': newStatus,
+        'updatedAt': now.toIso8601String(),
+      };
+
+      if (newStatus == 'In Progress') {
+        updateData['inProgressAt'] = now.toIso8601String();
+      } else if (newStatus == 'Resolved') {
+        updateData['resolvedAt'] = now.toIso8601String();
+      }
+
       await _firestore
           .collection('complaints')
           .doc(complaintId)
-          .update({'status': newStatus, 'updatedAt': DateTime.now().toIso8601String()});
+          .update(updateData);
+
+      // Keep admin list instantly in sync
+      final index = complaints.indexWhere((c) => c.id == complaintId);
+      if (index != -1) {
+        final current = complaints[index];
+        complaints[index] = ComplaintModel(
+          id: current.id,
+          title: current.title,
+          description: current.description,
+          residentName: current.residentName,
+          flatNumber: current.flatNumber,
+          residentId: current.residentId,
+          societyId: current.societyId,
+          status: newStatus,
+          createdAt: current.createdAt,
+          updatedAt: now,
+          inProgressAt: newStatus == 'In Progress' ? now : current.inProgressAt,
+          resolvedAt: newStatus == 'Resolved' ? now : current.resolvedAt,
+        );
+      }
 
       Get.snackbar(
         '✅ Status Updated',
@@ -172,9 +257,15 @@ class ComplaintController extends GetxController {
         margin: const EdgeInsets.all(15),
       );
 
-      Get.back();
+      // Auto-back after 1 second
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        Get.back();
+      });
+
+      return true;
     } catch (e) {
       _showError('Failed to update status. Please try again.');
+      return false;
     }
   }
 
@@ -191,6 +282,7 @@ class ComplaintController extends GetxController {
 
   @override
   void onClose() {
+    _complaintSubscription?.cancel();
     titleController.dispose();
     descriptionController.dispose();
     super.onClose();

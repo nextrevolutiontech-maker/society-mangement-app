@@ -88,17 +88,29 @@ class SuperAdminPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. GLOBAL SUMMARY
-                  Obx(() => Row(
+                  Obx(() => Column(
                     children: [
-                      _globalStat('Societies', controller.totalSocieties.value.toString(), Icons.business_rounded, const Color(0xFF1565C0)),
-                      const SizedBox(width: 12),
-                      _globalStat('Users', controller.totalUsers.value.toString(), Icons.people_rounded, const Color(0xFF283593)),
-                      const SizedBox(width: 12),
-                      _globalStat('Active', controller.activeUsers.value.toString(), Icons.bolt_rounded, const Color(0xFF2E7D32)),
+                      Row(
+                        children: [
+                          _globalStat('Societies', controller.totalSocieties.value.toString(), Icons.business_rounded, const Color(0xFF1565C0)),
+                          const SizedBox(width: 12),
+                          _globalStat('Total Users', controller.totalUsers.value.toString(), Icons.people_rounded, const Color(0xFF283593)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _globalStat('DAU', controller.dauCount.value.toString(), Icons.bolt_rounded, const Color(0xFF2E7D32)),
+                          const SizedBox(width: 12),
+                          _globalStat('WAU', controller.wauCount.value.toString(), Icons.trending_up_rounded, const Color(0xFF0D47A1)),
+                          const SizedBox(width: 12),
+                          _globalStat('MAU', controller.mauCount.value.toString(), Icons.analytics_rounded, const Color(0xFF6A1B9A)),
+                        ],
+                      ),
                     ],
                   )),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
 
                   // 2. PLATFORM CONTROLS
                   Text(
@@ -114,12 +126,10 @@ class SuperAdminPanel extends StatelessWidget {
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 12,
                     children: [
-                      _controlAction('Add Society', Icons.add_business_rounded, const Color(0xFF1565C0), () => Get.toNamed('/manage-societies')),
+                      _controlAction('Manage Societies', Icons.add_business_rounded, const Color(0xFF1565C0), () => Get.toNamed('/manage-societies')),
                       _controlAction('Add Admin', Icons.admin_panel_settings_rounded, const Color(0xFF6A1B9A), () => Get.toNamed('/add-admin')),
                       _controlAction('Manage Users', Icons.people_alt_rounded, const Color(0xFF00897B), () => Get.toNamed('/manage-users')),
-                      _controlAction('Visitor Logs', Icons.history_edu_rounded, const Color(0xFF00BFA5), () => Get.toNamed('/admin-visitor-logs')),
                       _controlAction('Banner Control', Icons.image_rounded, const Color(0xFFAD1457), () => Get.toNamed('/banner-settings')),
-                      _controlAction('Complaints', Icons.list_alt_rounded, const Color(0xFFE65100), () => Get.toNamed('/super-admin-complaints')),
                     ],
                   ),
 
@@ -135,13 +145,7 @@ class SuperAdminPanel extends StatelessWidget {
 
                   const SizedBox(height: 40),
 
-                  // 4. FEATURE TOGGLES
-                  Text(
-                    'Feature Toggles',
-                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E293B)),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildFeatureToggles(),
+                  const SizedBox(height: 10),
 
                   const SizedBox(height: 40),
 
@@ -322,61 +326,7 @@ class SuperAdminPanel extends StatelessWidget {
   // FEATURE TOGGLES
   // ══════════════════════════════════════════════════════════
 
-  Widget _buildFeatureToggles() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        children: [
-          _featureToggle('SOS Emergency', Icons.emergency_rounded, 'SOS', controller.isSosEnabled, const Color(0xFFD32F2F)),
-          _divider(),
-          _featureToggle('Complaints Module', Icons.campaign_rounded, 'Complaint', controller.isComplaintEnabled, const Color(0xFFE65100)),
-          _divider(),
-          _featureToggle('Spin & Win', Icons.casino_rounded, 'Spin', controller.isSpinEnabled, const Color(0xFFF9A825)),
-          _divider(),
-          _featureToggle('Visitor Management', Icons.group_rounded, 'Visitors', controller.isVisitorsEnabled, const Color(0xFF00897B)),
-          _divider(),
-          _featureToggle('Online Payments', Icons.payment_rounded, 'Payments', controller.isPaymentsEnabled, const Color(0xFF2E7D32)),
-        ],
-      ),
-    );
-  }
 
-  Widget _featureToggle(String label, IconData icon, String featureKey, RxBool value, Color color) {
-    return Obx(() => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        secondary: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-        title: Text(label, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
-        subtitle: Text(
-          value.value ? 'Enabled' : 'Disabled',
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: value.value ? const Color(0xFF2E7D32) : const Color(0xFF94A3B8),
-          ),
-        ),
-        value: value.value,
-        activeColor: const Color(0xFF2E7D32),
-        onChanged: (val) => controller.toggleFeature(featureKey),
-      ),
-    ));
-  }
-
-  Widget _divider() {
-    return Divider(color: Colors.grey.shade100, height: 1, indent: 20, endIndent: 20);
-  }
 
   // ══════════════════════════════════════════════════════════
   // RECENT ACTIVITY

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../dashboard_controller.dart';
+import '../payments/payment_controller.dart';
 import '../auth/controllers/auth_controller.dart';
 
 class ResidentDashboard extends StatelessWidget {
   ResidentDashboard({super.key});
 
-  final DashboardController controller = Get.put(DashboardController());
+  final DashboardController controller = Get.find<DashboardController>();
+  final PaymentController paymentController = Get.put(PaymentController());
   final PageController _bannerPageController = PageController();
 
   @override
@@ -54,8 +57,8 @@ class ResidentDashboard extends StatelessWidget {
       slivers: [
         // ── Sticky Header ───────────────────────────────
         SliverAppBar(
-          expandedHeight: 95,
-          toolbarHeight: 95,
+          expandedHeight: 110,
+          toolbarHeight: 110,
           pinned: true,
           automaticallyImplyLeading: false,
           backgroundColor: const Color(0xFF1565C0),
@@ -69,16 +72,14 @@ class ResidentDashboard extends StatelessWidget {
               ),
             ),
           ),
-          title: GetBuilder<DashboardController>(
-            builder: (controller) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0),
+          title: Obx(() => Padding(
+              padding: const EdgeInsets.only(top: 5),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Avatar
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -88,7 +89,7 @@ class ResidentDashboard extends StatelessWidget {
                         controller.currentUserName.value.isNotEmpty
                             ? controller.currentUserName.value[0].toUpperCase()
                             : 'U',
-                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
                       ),
                     ),
                   ),
@@ -105,38 +106,49 @@ class ResidentDashboard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          '${controller.societyName.value} | ${controller.currentUserFlat.value.isNotEmpty ? controller.currentUserFlat.value : "Resident"}',
+                          controller.societyName.value,
                           style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Resident • Flat ${controller.currentUserFlat.value.isNotEmpty ? controller.currentUserFlat.value : "N/A"}',
+                          style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   ),
-                  // Notice
-                  GestureDetector(
-                    onTap: () => Get.toNamed('/notices'),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
+                  // Actions
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Get.toNamed('/notices'),
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
+                        ),
                       ),
-                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Logout
-                  GestureDetector(
-                    onTap: () => Get.find<AuthController>().logout(),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
-                    ),
+                      const SizedBox(width: 8),
+                      if (controller.currentUserRole.value == 'super_admin')
+                        GestureDetector(
+                          onTap: () => Get.find<AuthController>().logout(),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.logout_rounded, color: Colors.white70, size: 18),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -185,9 +197,9 @@ class ResidentDashboard extends StatelessWidget {
     );
   }
 
-  // Baner Slider Widget
+  // Banner Slider Widget
   Widget _buildBannerSlider() {
-    final List<List<Color>> gradients = [
+    final List<List<Color>> fallbackGradients = [
       [const Color(0xFF1565C0), const Color(0xFF42A5F5)],
       [const Color(0xFF00897B), const Color(0xFF4DB6AC)],
       [const Color(0xFF6A1B9A), const Color(0xFFAB47BC)],
@@ -199,57 +211,160 @@ class ResidentDashboard extends StatelessWidget {
       return Column(
         children: [
           SizedBox(
-            height: 130,
+            height: 220, // Increased height to 220
             child: PageView.builder(
               controller: _bannerPageController,
               itemCount: controller.bannerImages.length,
               onPageChanged: (index) => controller.currentBannerIndex.value = index,
               itemBuilder: (context, index) {
                 final banner = controller.bannerImages[index];
-                final colors = gradients[index % gradients.length];
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: colors,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                final colors = fallbackGradients[index % fallbackGradients.length];
+                final String imageUrl = banner['image_url'] ?? '';
+                final String link = banner['link'] ?? '';
+
+                return GestureDetector(
+                  onTap: () async {
+                    String finalLink = link.trim().replaceAll(' ', '');
+                    if (finalLink.isEmpty) return;
+
+                    // Show Loading
+                    controller.isOpeningLink.value = true;
+                    Get.dialog(
+                      const Center(
+                        child: Card(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator(color: Color(0xFF1565C0)),
+                          ),
+                        ),
+                      ),
+                      barrierDismissible: false,
+                    );
+
+                    // Ensure link has a protocol
+                    if (!finalLink.startsWith('http://') && !finalLink.startsWith('https://')) {
+                      finalLink = 'https://$finalLink';
+                    }
+                    
+                    try {
+                      final Uri url = Uri.parse(finalLink);
+                      final bool launched = await launchUrl(
+                        url, 
+                        mode: LaunchMode.externalApplication,
+                      );
+                      
+                      if (!launched) {
+                        Get.snackbar('Error', 'No application found to open this link', 
+                          backgroundColor: Colors.redAccent, colorText: Colors.white,
+                          snackPosition: SnackPosition.BOTTOM);
+                      }
+                    } catch (e) {
+                      Get.snackbar('Error', 'Invalid link format: $finalLink', 
+                        backgroundColor: Colors.redAccent, colorText: Colors.white,
+                        snackPosition: SnackPosition.BOTTOM);
+                    } finally {
+                      controller.isOpeningLink.value = false;
+                      if (Get.isDialogOpen ?? false) Get.back();
+                    }
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors[0].withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: Stack(
+                        children: [
+                          // 1. Background (Gradient or Network Image)
+                          Positioned.fill(
+                            child: imageUrl.isNotEmpty
+                                ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(colors: colors),
+                                        ),
+                                        child: const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(colors: colors),
+                                      ),
+                                      child: const Icon(Icons.image_not_supported_rounded, color: Colors.white30, size: 40),
+                                    ),
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: colors,
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          
+                          // 2. Dark Overlay for text readability
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // 3. Text Content
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                if (banner['title'] != null && banner['title']!.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.25),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      banner['title']!,
+                                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  banner['subtitle'] ?? '',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 18, // Slightly larger font for larger banner
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          banner['title'] ?? '',
-                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        banner['subtitle'] ?? '',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 );
               },
@@ -342,7 +457,7 @@ class ResidentDashboard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '₹${controller.maintenanceAmount.value.toStringAsFixed(0)}',
+                    '₹${paymentController.currentMaintenanceAmount.value.toStringAsFixed(0)}',
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 28,
@@ -403,7 +518,8 @@ class ResidentDashboard extends StatelessWidget {
           _quickAction(Icons.campaign_rounded, 'Complaint', const Color(0xFFE65100), '/my-complaints'),
         if (controller.isVisitorsEnabled.value)
           _quickAction(Icons.group_rounded, 'Visitors', const Color(0xFF00897B), '/visitor-management'),
-        _quickAction(Icons.notifications_active_rounded, 'Notices', const Color(0xFF6A1B9A), '/notices'),
+        if (controller.isNoticeEnabled.value)
+          _quickAction(Icons.notifications_active_rounded, 'Notices', const Color(0xFF6A1B9A), '/notices'),
         if (controller.isSosEnabled.value)
           _quickAction(Icons.emergency_rounded, 'SOS', const Color(0xFFD32F2F), '/sos'),
         if (controller.isSpinEnabled.value)

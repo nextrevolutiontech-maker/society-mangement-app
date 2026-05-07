@@ -13,6 +13,7 @@ class UserModel {
   final bool isActive;
   final String? createdBy; // mobile/email of the admin/super_admin who created this user
   final DateTime? createdAt;
+  final DateTime? lastActive;
 
   UserModel({
     this.id,
@@ -27,6 +28,7 @@ class UserModel {
     this.isActive = true,
     this.createdBy,
     this.createdAt,
+    this.lastActive,
   }) : email = email.toLowerCase();
 
   Map<String, dynamic> toMap() {
@@ -42,6 +44,7 @@ class UserModel {
       'is_active': isActive,
       'created_by': createdBy,
       'created_at': createdAt ?? FieldValue.serverTimestamp(),
+      'last_active': lastActive ?? FieldValue.serverTimestamp(),
     };
   }
 
@@ -59,6 +62,7 @@ class UserModel {
       isActive: map['is_active'] ?? true,
       createdBy: map['created_by'],
       createdAt: (map['created_at'] as Timestamp?)?.toDate(),
+      lastActive: (map['last_active'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -76,6 +80,7 @@ class UserModel {
     bool? isActive,
     String? createdBy,
     DateTime? createdAt,
+    DateTime? lastActive,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -90,6 +95,7 @@ class UserModel {
       isActive: isActive ?? this.isActive,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
+      lastActive: lastActive ?? this.lastActive,
     );
   }
 }

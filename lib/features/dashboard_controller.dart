@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/services/storage_service.dart';
 import '../core/services/firestore_service.dart';
@@ -58,31 +60,39 @@ class DashboardController extends GetxController {
   var currentUserSociety = ''.obs;   // Society ID
   var societyId = ''.obs;            // Same as currentUserSociety (shorthand)
   var currentUserFlat = ''.obs;
+  var currentUserFlatType = ''.obs;
   var currentUserBlock = ''.obs;
   var currentUserMobile = ''.obs;
   var societyName = ''.obs;
   var isLoadingUser = false.obs;
+  var isUpdatingProfile = false.obs;
 
   // ── Resident Dashboard Data ───────────────────────────────
   final maintenanceAmount = 1200.0.obs;
   final maintenanceDueDate = 'May 1, 2026'.obs;
   final isMaintenancePaid = false.obs;
 
-  // ── Banner Data (Super Admin controlled) ──────────────────
-  var bannerImages = <Map<String, String>>[].obs;
+  // ── Banner Data (Dual: Global + Society) ───────────────────
   var currentBannerIndex = 0.obs;
+  StreamSubscription? _globalBannerSubscription;
+  StreamSubscription? _societyBannerSubscription;
+  var globalBanners = <Map<String, dynamic>>[].obs;
+  var societyBanners = <Map<String, dynamic>>[].obs;
+  var bannerImages = <Map<String, dynamic>>[].obs;
 
   // ── Admin Dashboard Counts ────────────────────────────────
   var totalResidents = 0.obs;
   var totalGuards = 0.obs;
-  var pendingComplaints = 5.obs;
-  var totalVisitorsToday = 12.obs;
+  var pendingComplaints = 0.obs;
+  var totalVisitorsToday = 0.obs;
   var totalPaymentsCollected = '₹0'.obs;
 
   // ── Super Admin Dashboard Counts ──────────────────────────
   var totalSocieties = 0.obs;
   var totalUsers = 0.obs;
-  var activeUsers = 0.obs;
+  var dauCount = 0.obs; // Daily Active Users
+  var wauCount = 0.obs; // Weekly Active Users
+  var mauCount = 0.obs; // Monthly Active Users
 
   // ── Recent Activities ─────────────────────────────────────
   var recentActivities = <Map<String, String>>[].obs;
@@ -93,23 +103,26 @@ class DashboardController extends GetxController {
   final isSpinEnabled = true.obs;
   final isVisitorsEnabled = true.obs;
   final isPaymentsEnabled = true.obs;
+  final isNoticeEnabled = true.obs;
 
   // ── Push Notification (Super Admin) ───────────────────────
   final notificationTitleController = TextEditingController();
   final notificationMessageController = TextEditingController();
   var isSendingNotification = false.obs;
+  var isOpeningLink = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    _fetchRealUserData();
+    fetchRealUserData();
+    _listenToFeatureToggles();
   }
 
   // ════════════════════════════════════════════════════════════
   // FETCH USER DATA & ROLE-BASED DASHBOARD DATA
   // ════════════════════════════════════════════════════════════
 
-  Future<void> _fetchRealUserData() async {
+  Future<void> fetchRealUserData() async {
     isLoadingUser.value = true;
     try {
       String? identifier = StorageService.getUserIdentifier();
@@ -139,6 +152,7 @@ class DashboardController extends GetxController {
           societyId.value = user.societyId; // Keep both in sync
           currentUserMobile.value = user.mobile;
           if (user.flatNo != null) currentUserFlat.value = user.flatNo!;
+          if (user.flatType != null) currentUserFlatType.value = user.flatType!;
           if (user.block != null) currentUserBlock.value = user.block!;
 
           try {
@@ -150,6 +164,9 @@ class DashboardController extends GetxController {
 
           // Load role-specific data
           _loadRoleBasedData(user.role, user.societyId);
+          
+          // Update last active
+          _updateUserHeartbeat();
         }
       }
       update(); // Notify GetBuilder listeners
@@ -158,6 +175,56 @@ class DashboardController extends GetxController {
     } finally {
       isLoadingUser.value = false;
       update();
+    }
+  }
+
+  /// Updates the user's last active timestamp in Firestore
+  Future<void> _updateUserHeartbeat() async {
+    if (currentUserId.value.isNotEmpty) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId.value)
+            .update({'last_active': FieldValue.serverTimestamp()});
+      } catch (e) {
+        debugPrint('Heartbeat update failed: $e');
+      }
+    }
+  }
+  
+  Future<bool> updateProfile({
+    required String name,
+    String? flatType,
+    String? flatNo,
+    String? block,
+  }) async {
+    if (name.isEmpty) return false;
+    if (currentUserId.value.isEmpty) {
+      _showError('User ID not found. Please log in again.');
+      return false;
+    }
+    
+    isUpdatingProfile.value = true;
+    try {
+      final Map<String, dynamic> updates = {'name': name};
+      if (flatType != null) updates['flatType'] = flatType;
+      if (flatNo != null) updates['flatNo'] = flatNo;
+      if (block != null) updates['block'] = block;
+
+      await _firestoreService.updateUser(currentUserId.value, updates);
+      
+      // Update local observables
+      currentUserName.value = name;
+      if (flatType != null) currentUserFlatType.value = flatType;
+      if (flatNo != null) currentUserFlat.value = flatNo;
+      if (block != null) currentUserBlock.value = block;
+      
+      return true;
+    } catch (e) {
+      _showError('Failed to update profile: $e');
+      return false;
+    } finally {
+      isUpdatingProfile.value = false;
     }
   }
 
@@ -181,7 +248,7 @@ class DashboardController extends GetxController {
         // Guard specific data if any
         break;
     }
-    _loadBannerData(societyId);
+    loadBannerDataForSociety(societyId);
     _loadRecentActivities(role);
   }
 
@@ -190,8 +257,7 @@ class DashboardController extends GetxController {
   // ════════════════════════════════════════════════════════════
 
   void _loadResidentData(String societyId) {
-    // Load maintenance details, feature toggles from Firestore
-    _loadFeatureToggles(societyId);
+    // Maintenance details can be loaded here if needed
   }
 
   // ════════════════════════════════════════════════════════════
@@ -203,6 +269,15 @@ class DashboardController extends GetxController {
       // Get real counts from Firestore
       totalResidents.value = await _firestoreService.countUsersByRole(societyId, 'resident');
       totalGuards.value = await _firestoreService.countUsersByRole(societyId, 'guard');
+      
+      // Get total complaints count for this society (Summary)
+      final complaintsSnapshot = await FirebaseFirestore.instance
+          .collection('complaints')
+          .where('societyId', isEqualTo: societyId)
+          .where('status', isNotEqualTo: 'Resolved') // Count all except Resolved
+          .count()
+          .get();
+      pendingComplaints.value = complaintsSnapshot.count ?? 0;
       
       // Get real payments collected
       final paymentsSnapshot = await FirebaseFirestore.instance
@@ -239,7 +314,15 @@ class DashboardController extends GetxController {
 
       final users = await _firestoreService.getAllUsers();
       totalUsers.value = users.length;
-      activeUsers.value = users.where((u) => u.isActive).length;
+      
+      final now = DateTime.now();
+      final dayAgo = now.subtract(const Duration(days: 1));
+      final weekAgo = now.subtract(const Duration(days: 7));
+      final monthAgo = now.subtract(const Duration(days: 30));
+
+      dauCount.value = users.where((u) => u.lastActive != null && u.lastActive!.isAfter(dayAgo)).length;
+      wauCount.value = users.where((u) => u.lastActive != null && u.lastActive!.isAfter(weekAgo)).length;
+      mauCount.value = users.where((u) => u.lastActive != null && u.lastActive!.isAfter(monthAgo)).length;
     } catch (e) {
       debugPrint('Error loading super admin data: $e');
     }
@@ -268,7 +351,10 @@ class DashboardController extends GetxController {
       allVisitors.value = sortedVisitors;
       
       // Separate today's (active) and history
-      todayVisitors.value = sortedVisitors.where((v) => v['status'] == 'in').toList();
+      final activeVisitors = sortedVisitors.where((v) => v['status'] == 'in').toList();
+      todayVisitors.value = activeVisitors;
+      totalVisitorsToday.value = activeVisitors.length; // Update the dashboard count!
+      
       visitorHistory.value = sortedVisitors.where((v) => v['status'] == 'out').toList();
     });
   }
@@ -288,8 +374,8 @@ class DashboardController extends GetxController {
 
     try {
       isCheckingIn.value = true;
-      final now = TimeOfDay.now();
-      final timeStr = '${now.hourOfPeriod == 0 ? 12 : now.hourOfPeriod}:${now.minute.toString().padLeft(2, '0')} ${now.period == DayPeriod.am ? 'AM' : 'PM'}';
+      final now = DateTime.now();
+      final timeStr = DateFormat('dd MMM, hh:mm a').format(now);
 
       await _firestoreService.addVisitor({
         'name': name,
@@ -315,8 +401,8 @@ class DashboardController extends GetxController {
   /// Guard: Check-out a visitor
   Future<void> checkOutVisitor(String visitorId, String visitorName) async {
     try {
-      final now = TimeOfDay.now();
-      final timeStr = '${now.hourOfPeriod == 0 ? 12 : now.hourOfPeriod}:${now.minute.toString().padLeft(2, '0')} ${now.period == DayPeriod.am ? 'AM' : 'PM'}';
+      final now = DateTime.now();
+      final timeStr = DateFormat('dd MMM, hh:mm a').format(now);
       
       await _firestoreService.updateVisitorCheckout(visitorId, timeStr);
 
@@ -335,16 +421,118 @@ class DashboardController extends GetxController {
   }
 
   // ════════════════════════════════════════════════════════════
-  // BANNER DATA
+  // FEATURE TOGGLES (Society-Specific)
   // ════════════════════════════════════════════════════════════
 
-  void _loadBannerData(String societyId) {
-    // Default banners — in production these come from Firestore
-    bannerImages.value = [
-      {'title': 'Community Event', 'subtitle': 'Annual Society Meet — May 15', 'gradient': 'blue'},
-      {'title': 'Maintenance Reminder', 'subtitle': 'Pay before May 1 to avoid late fees', 'gradient': 'teal'},
-      {'title': 'Safety First', 'subtitle': 'New CCTV cameras installed in Block C', 'gradient': 'purple'},
-    ];
+  void _listenToFeatureToggles() {
+    // Initial fetch if societyId is already present
+    if (currentUserSociety.value.isNotEmpty) {
+      _startFeatureToggleListener(currentUserSociety.value);
+    }
+
+    ever(currentUserSociety, (String sId) {
+      if (sId.isNotEmpty) {
+        _startFeatureToggleListener(sId);
+      }
+    });
+  }
+
+  void _startFeatureToggleListener(String sId) {
+    FirebaseFirestore.instance
+        .collection('societies')
+        .doc(sId)
+        .snapshots()
+        .listen((doc) {
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final toggles = data['feature_toggles'] ?? {};
+        isSosEnabled.value = toggles['SOS'] ?? true;
+        isComplaintEnabled.value = toggles['Complaint'] ?? true;
+        isSpinEnabled.value = toggles['Spin'] ?? true;
+        isVisitorsEnabled.value = toggles['Visitors'] ?? true;
+        isPaymentsEnabled.value = toggles['Payments'] ?? true;
+        isNoticeEnabled.value = toggles['Notices'] ?? true;
+
+        // Load Maintenance Data
+        maintenanceAmount.value = (data['maintenance_amount'] ?? 1200.0).toDouble();
+        maintenanceDueDate.value = (data['due_date'] ?? 'May 1, 2026').toString();
+      }
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // BANNER DATA (Combined Global + Society Specific)
+  // ════════════════════════════════════════════════════════════
+
+  void loadBannerDataForSociety(String sId) {
+    debugPrint('Loading banners for Society: $sId');
+    
+    // Clear old data first to avoid stale state
+    globalBanners.clear();
+    societyBanners.clear();
+    bannerImages.clear();
+
+    // 1. Listen to Global Banners (Common for everyone)
+    _globalBannerSubscription?.cancel();
+    _globalBannerSubscription = FirebaseFirestore.instance
+        .collection('banners')
+        .snapshots()
+        .listen((snapshot) {
+      globalBanners.value = snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}).toList();
+      debugPrint('Global Banners Loaded: ${globalBanners.length}');
+      _combineBanners();
+    });
+
+    // 2. Listen to Society Specific Banners
+    if (sId.isNotEmpty) {
+      _societyBannerSubscription?.cancel();
+      _societyBannerSubscription = FirebaseFirestore.instance
+          .collection('societies')
+          .doc(sId)
+          .collection('banners')
+          .snapshots()
+          .listen((snapshot) {
+        societyBanners.value = snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}).toList();
+        debugPrint('Society Banners Loaded: ${societyBanners.length}');
+        _combineBanners();
+      });
+    }
+  }
+
+  void _combineBanners() {
+    // Combine Global Banners first, then Society Banners
+    bannerImages.value = [...globalBanners, ...societyBanners];
+  }
+
+  Future<void> toggleFeature(String feature, {String? targetSocietyId}) async {
+    final sId = targetSocietyId ?? currentUserSociety.value;
+    if (sId.isEmpty) {
+      Get.snackbar('Error', 'No society selected', backgroundColor: Colors.redAccent, colorText: Colors.white);
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('societies').doc(sId).get();
+      if (!doc.exists) return;
+
+      Map<String, dynamic> data = doc.data() ?? {};
+      Map<String, dynamic> toggles = Map<String, dynamic>.from(data['feature_toggles'] ?? {});
+
+      bool currentValue = toggles[feature] ?? true;
+      bool newValue = !currentValue;
+      toggles[feature] = newValue;
+
+      await FirebaseFirestore.instance
+          .collection('societies')
+          .doc(sId)
+          .update({'feature_toggles': toggles});
+          
+      Get.snackbar('Success', '$feature module ${newValue ? 'Enabled' : 'Disabled'} for this society',
+        backgroundColor: const Color(0xFF0D47A1), colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(15));
+    } catch (e) {
+      _showError('Failed to update feature: $e');
+    }
   }
 
   void nextBanner() {
@@ -360,72 +548,15 @@ class DashboardController extends GetxController {
   }
 
   // ════════════════════════════════════════════════════════════
-  // FEATURE TOGGLES
-  // ════════════════════════════════════════════════════════════
-
-  void _loadFeatureToggles(String societyId) {
-    // In production, load from Firestore society settings
-    // For now, using defaults (all enabled)
-  }
-
-  void toggleFeature(String feature) {
-    switch (feature) {
-      case 'SOS':
-        isSosEnabled.toggle();
-        break;
-      case 'Complaint':
-        isComplaintEnabled.toggle();
-        break;
-      case 'Spin':
-        isSpinEnabled.toggle();
-        break;
-      case 'Visitors':
-        isVisitorsEnabled.toggle();
-        break;
-      case 'Payments':
-        isPaymentsEnabled.toggle();
-        break;
-    }
-    // In production, save toggle state to Firestore
-  }
-
-  // ════════════════════════════════════════════════════════════
   // RECENT ACTIVITIES
   // ════════════════════════════════════════════════════════════
 
   void _loadRecentActivities(String role) {
-    switch (role) {
-      case 'resident':
-        recentActivities.value = [
-          {'title': 'Maintenance Due: ₹1,200', 'time': 'Due May 1', 'type': 'payment'},
-          {'title': 'Visitor: Rahul Singh', 'time': '09:45 AM', 'type': 'visitor'},
-          {'title': 'Notice: Water Supply', 'time': 'Yesterday', 'type': 'notice'},
-          {'title': 'Complaint Resolved: Lift Issue', 'time': '2 days ago', 'type': 'complaint'},
-          {'title': 'SOS Alert Tested', 'time': '3 days ago', 'type': 'sos'},
-          {'title': 'Spin & Win: Won ₹50 Coupon', 'time': 'Last week', 'type': 'spin'},
-        ];
-        break;
-      case 'admin':
-        recentActivities.value = [
-          {'title': 'New Complaint: Water Leakage', 'time': '30 min ago', 'type': 'complaint'},
-          {'title': 'Maintenance Paid: Flat B-102', 'time': '09:15 AM', 'type': 'payment'},
-          {'title': 'Visitor Entry: Rahul Singh', 'time': '09:45 AM', 'type': 'visitor'},
-          {'title': 'New Resident Added: Priya S.', 'time': 'Yesterday', 'type': 'user'},
-          {'title': 'Guard Added: Ramesh K.', 'time': '2 days ago', 'type': 'user'},
-        ];
-        break;
-      case 'super_admin':
-        recentActivities.value = [
-          {'title': 'New Society: Green Valley', 'time': '1 hour ago', 'type': 'society'},
-          {'title': 'Admin Created: Ali Khan', 'time': 'Today', 'type': 'user'},
-          {'title': 'Feature Toggle: SOS Disabled', 'time': 'Yesterday', 'type': 'setting'},
-          {'title': 'Banner Updated', 'time': '2 days ago', 'type': 'banner'},
-          {'title': 'Push Notification Sent', 'time': '3 days ago', 'type': 'notification'},
-        ];
-        break;
-      default:
-        recentActivities.value = [];
-    }
+    // For now, clear dummy data. Real activities are populated via listeners (e.g. _listenToVisitors)
+    recentActivities.clear();
+    
+    // You could add logic here to fetch recent payments or complaints 
+    // to populate the list dynamically.
   }
 
   // ════════════════════════════════════════════════════════════
@@ -485,6 +616,8 @@ class DashboardController extends GetxController {
 
   @override
   void onClose() {
+    _globalBannerSubscription?.cancel();
+    _societyBannerSubscription?.cancel();
     notificationTitleController.dispose();
     notificationMessageController.dispose();
     super.onClose();

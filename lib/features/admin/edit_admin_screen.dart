@@ -5,22 +5,22 @@ import 'package:get/get.dart';
 import 'controllers/user_controller.dart';
 import '../../core/models/user_model.dart';
 
-class EditResidentScreen extends StatefulWidget {
-  const EditResidentScreen({super.key});
+class EditAdminScreen extends StatefulWidget {
+  const EditAdminScreen({super.key});
 
   @override
-  State<EditResidentScreen> createState() => _EditResidentScreenState();
+  State<EditAdminScreen> createState() => _EditAdminScreenState();
 }
 
-class _EditResidentScreenState extends State<EditResidentScreen> {
+class _EditAdminScreenState extends State<EditAdminScreen> {
   final UserController controller = Get.find<UserController>();
-  late UserModel user;
+  late UserModel admin;
 
   @override
   void initState() {
     super.initState();
-    user = Get.arguments as UserModel;
-    controller.setupEditResident(user);
+    admin = Get.arguments as UserModel;
+    controller.setupEditAdmin(admin);
   }
 
   @override
@@ -35,7 +35,7 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
           onPressed: () => Get.back(),
         ),
         title: Text(
-          'Edit ${user.role[0].toUpperCase()}${user.role.substring(1)}',
+          'Edit Admin',
           style: GoogleFonts.poppins(
             color: const Color(0xFF263238),
             fontWeight: FontWeight.w700,
@@ -49,7 +49,7 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Card
+            // Header Card (Following Client Image Style)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -92,7 +92,7 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
                           ),
                         ),
                         Text(
-                          'Modify information for ${user.name}',
+                          'Modify information for ${admin.name}',
                           style: GoogleFonts.poppins(
                             color: Colors.white70,
                             fontSize: 12,
@@ -106,14 +106,13 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
             ),
             const SizedBox(height: 25),
 
-            // Form Fields
             _sectionLabel('Personal Details'),
             const SizedBox(height: 12),
 
             _buildTextField(
               controller: controller.nameController,
               label: 'Full Name',
-              hint: 'Enter resident name',
+              hint: 'Enter admin name',
               icon: Icons.person_outline_rounded,
               textCapitalization: TextCapitalization.words,
             ),
@@ -122,57 +121,74 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
             _buildTextField(
               controller: controller.mobileController,
               label: 'Mobile Number',
-              hint: '10-digit number (e.g. 9876543210)',
+              hint: '10-digit number',
               icon: Icons.phone_android_rounded,
               keyboardType: TextInputType.phone,
               maxLength: 10,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              isPhone: true,
             ),
             const SizedBox(height: 15),
 
             _buildTextField(
               controller: controller.emailController,
               label: 'Email Address',
-              hint: 'Google Sign-In email',
+              hint: 'Admin email',
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
             ),
 
-            const SizedBox(height: 25),
-            if (user.role == 'resident') ...[
-              _sectionLabel('Flat Details'),
-              const SizedBox(height: 12),
-
-              _buildTextField(
-                controller: controller.flatNoController,
-                label: 'Flat Number',
-                hint: 'e.g. 101, 202',
-                icon: Icons.home_rounded,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            _sectionLabel('Assignment'),
+            const SizedBox(height: 12),
+            
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              const SizedBox(height: 15),
-
-              _buildTextField(
-                controller: controller.blockController,
-                label: 'Block (Optional)',
-                hint: 'e.g. A, B, Tower-1',
-                icon: Icons.business_rounded,
-              ),
-              const SizedBox(height: 15),
-
-              _buildFlatTypeDropdown(),
-            ],
+              child: Obx(() => DropdownButtonFormField<String>(
+                value: controller.selectedSocietyId.value.isNotEmpty ? controller.selectedSocietyId.value : null,
+                decoration: InputDecoration(
+                  labelText: 'Assigned Society',
+                  labelStyle: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF64748B),
+                  ),
+                  prefixIcon: const Icon(Icons.business_rounded, color: Color(0xFF1565C0), size: 22),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                ),
+                items: controller.societiesList
+                    .map((society) => DropdownMenuItem(
+                          value: society.id,
+                          child: Text(society.name, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500)),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) controller.selectedSocietyId.value = value;
+                },
+                dropdownColor: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+              )),
+            ),
 
             const SizedBox(height: 35),
             
-            // Submit Button
+            // Save Button
             Obx(() => SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: controller.isLoading.value ? null : () => controller.updateResident(user),
+                onPressed: controller.isLoading.value ? null : () => controller.updateAdmin(admin),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1565C0),
                   foregroundColor: Colors.white,
@@ -231,7 +247,6 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
     TextCapitalization textCapitalization = TextCapitalization.none,
     int? maxLength,
     List<TextInputFormatter>? inputFormatters,
-    bool isPhone = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -272,72 +287,6 @@ class _EditResidentScreenState extends State<EditResidentScreen> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         ),
       ),
-    );
-  }
-
-  Widget _buildFlatTypeDropdown() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Obx(() => DropdownButtonFormField<String>(
-            value: controller.flatTypes.contains(controller.selectedFlatType.value) 
-                ? controller.selectedFlatType.value 
-                : controller.flatTypes.first,
-            decoration: InputDecoration(
-              labelText: 'Flat Type',
-              labelStyle: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF64748B),
-              ),
-              prefixIcon: const Icon(Icons.apartment_rounded, color: Color(0xFF1565C0), size: 22),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 18),
-            ),
-            items: controller.flatTypes
-                .map((type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500)),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                controller.selectedFlatType.value = value;
-                controller.isCustomFlatType.value = (value == 'Custom / Other');
-              }
-            },
-            dropdownColor: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
-          )),
-        ),
-
-        // Custom Flat Type Input
-        Obx(() => controller.isCustomFlatType.value
-            ? Padding(
-                padding: const EdgeInsets.only(top: 15),
-                child: _buildTextField(
-                  controller: controller.customFlatTypeController,
-                  label: 'Custom Flat Type Name',
-                  hint: 'e.g. Shop-5, Penthouse-B',
-                  icon: Icons.edit_note_rounded,
-                  textCapitalization: TextCapitalization.characters,
-                ),
-              )
-            : const SizedBox.shrink()),
-      ],
     );
   }
 }
