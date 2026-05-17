@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../dashboard_controller.dart';
 import '../payments/payment_controller.dart';
@@ -395,112 +396,143 @@ class ResidentDashboard extends StatelessWidget {
   }
 
   Widget _buildMaintenanceCard() {
-    return Obx(() => Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: controller.isMaintenancePaid.value
-              ? [const Color(0xFF2E7D32), const Color(0xFF66BB6A)]
-              : [const Color(0xFF1565C0), const Color(0xFF42A5F5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Obx(() {
+      final currentMonth = DateFormat('MMMM yyyy').format(DateTime.now());
+      final totalAmount = paymentController.currentMaintenanceAmount.value;
+      final paidAmount = paymentController.getTotalPaidForMonth(currentMonth);
+      final remainingDues = paymentController.getRemainingDues();
+      final status = paymentController.getDetailedStatus(currentMonth);
+      
+      Color statusColor = const Color(0xFF1565C0);
+      IconData statusIcon = Icons.account_balance_wallet_rounded;
+      
+      if (status == 'Paid') {
+        statusColor = const Color(0xFF2E7D32);
+        statusIcon = Icons.check_circle_rounded;
+      } else if (status == 'Partially Paid' || status == 'Pending Verification') {
+        statusColor = const Color(0xFFE65100);
+        statusIcon = Icons.hourglass_bottom_rounded;
+      } else if (status == 'Rejected') {
+        statusColor = const Color(0xFFD32F2F);
+        statusIcon = Icons.error_outline_rounded;
+      }
+
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: statusColor.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 10)),
+          ],
+          border: Border.all(color: statusColor.withOpacity(0.1)),
         ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: (controller.isMaintenancePaid.value
-                    ? const Color(0xFF2E7D32)
-                    : const Color(0xFF1565C0))
-                .withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  controller.isMaintenancePaid.value
-                      ? Icons.check_circle_rounded
-                      : Icons.account_balance_wallet_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
+        child: Column(
+          children: [
+            // Top Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.05),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(width: 10),
-              Text(
-                controller.isMaintenancePaid.value ? 'Maintenance Paid' : 'Maintenance Due',
-                style: GoogleFonts.poppins(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '₹${paymentController.currentMaintenanceAmount.value.toStringAsFixed(0)}',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  Row(
+                    children: [
+                      Icon(statusIcon, color: statusColor, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        status.toUpperCase(),
+                        style: GoogleFonts.poppins(color: statusColor, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                      ),
+                    ],
                   ),
                   Text(
-                    'Due: ${controller.maintenanceDueDate.value}',
-                    style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.w500),
+                    currentMonth.toUpperCase(),
+                    style: GoogleFonts.poppins(color: const Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
-              if (!controller.isMaintenancePaid.value)
-                GestureDetector(
-                  onTap: () => Get.toNamed('/payment'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+            ),
+            
+            // Amount Details
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildAmountCol('TOTAL', totalAmount, const Color(0xFF64748B)),
+                      _buildAmountCol('PAID', paidAmount, const Color(0xFF16A34A)),
+                      _buildAmountCol('DUE', remainingDues, remainingDues > 0 ? const Color(0xFFEF4444) : const Color(0xFF64748B)),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  if (remainingDues > 0)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Get.toNamed('/payment'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: statusColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      'Pay Now',
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF1565C0),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.payment_rounded, size: 18),
+                            const SizedBox(width: 10),
+                            Text(
+                              status == 'Pending Verification' ? 'View Status' : 'Pay Remaining Due',
+                              style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Fully Paid for $currentMonth',
+                          style: GoogleFonts.poppins(color: const Color(0xFF16A34A), fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    ));
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildAmountCol(String label, double amount, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+        const SizedBox(height: 4),
+        Text(
+          '₹${amount.toStringAsFixed(0)}',
+          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+        ),
+      ],
+    );
   }
 
   Widget _buildQuickActions() {

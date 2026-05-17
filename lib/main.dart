@@ -35,6 +35,7 @@ import 'features/admin/banner_settings_screen.dart';
 import 'features/admin/visitor_logs_screen.dart';
 import 'features/admin/maintenance_settings_screen.dart';
 
+import 'features/resident/payment_screen.dart';
 import 'features/resident/notices_screen.dart';
 import 'features/resident/sos_screen.dart';
 import 'features/resident/spin_screen.dart';
@@ -152,7 +153,7 @@ class SocietyApp extends StatelessWidget {
 
         // ── Resident ─────────────────────────────────────
         GetPage(name: '/dashboard', page: () => ResidentDashboard()),
-        GetPage(name: '/payment', page: () => ResidentPaymentDashboard()),
+        GetPage(name: '/payment', page: () => MaintenancePaymentScreen()),
         GetPage(name: '/my-complaints', page: () => MyComplaintsScreen()),
         GetPage(name: '/raise-complaint', page: () => RaiseComplaintScreen()),
         GetPage(name: '/admin-complaints', page: () => AdminComplaintListScreen()),

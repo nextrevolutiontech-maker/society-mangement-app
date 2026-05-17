@@ -38,17 +38,24 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- Package-based queries for common UPI apps -->
         <package android:name="com.google.android.apps.nbu.paisa.user" />
         <package android:name="com.phonepe.app" />
         <package android:name="net.one97.paytm" />
         <package android:name="in.org.npci.upiapp" />
+        <package android:name="com.freecharge.android" />
+        <package android:name="com.msf.kbank.mobile" />
+        <package android:name="com.whatsapp" />
+
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="upi" android:host="pay" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="upi" />
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />

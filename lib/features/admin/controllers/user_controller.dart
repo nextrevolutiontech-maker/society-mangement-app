@@ -80,16 +80,22 @@ class UserController extends GetxController {
         final data = doc.data();
         if (data != null && data['maintenanceByFlatType'] != null) {
           final Map<String, dynamic> slabs = Map<String, dynamic>.from(data['maintenanceByFlatType']);
-          if (slabs.isNotEmpty) {
-            // Get keys, sort them, and update list
-            final keys = slabs.keys.toList()..sort();
-            keys.add('Custom / Other');
-            flatTypes.assignAll(keys);
-            
-            // Update selected if current one isn't in the new list
-            if (!flatTypes.contains(selectedFlatType.value)) {
-              selectedFlatType.value = flatTypes.first;
-            }
+          
+          // Start with standard types
+          final Set<String> allTypes = {'1BHK', '2BHK', '3BHK', '4BHK', '5BHK'};
+          
+          // Add types from existing slabs
+          allTypes.addAll(slabs.keys.map((k) => k.toString()));
+          
+          // Sort and add 'Custom / Other' at the end
+          final sortedList = allTypes.toList()..sort();
+          sortedList.add('Custom / Other');
+          
+          flatTypes.assignAll(sortedList);
+          
+          // Update selected if current one isn't in the new list
+          if (!flatTypes.contains(selectedFlatType.value)) {
+            selectedFlatType.value = flatTypes.first;
           }
         }
       }

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../core/theme.dart';
 import '../dashboard_controller.dart';
 import '../payments/payment_controller.dart';
+import '../admin/controllers/user_controller.dart';
 
 class AdminPaymentSettingsScreen extends StatefulWidget {
   AdminPaymentSettingsScreen({super.key});
@@ -17,18 +18,27 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
 
   final _upiController = TextEditingController();
   final _nameController = TextEditingController();
+  final _bankController = TextEditingController();
+  final _accountController = TextEditingController();
+  final _notesController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _upiController.text = controller.currentUpiId.value;
     _nameController.text = controller.currentPaymentName.value;
+    _bankController.text = controller.currentBankName.value;
+    _accountController.text = controller.currentAccountInfo.value;
+    _notesController.text = controller.currentPaymentNotes.value;
   }
 
   @override
   void dispose() {
     _upiController.dispose();
     _nameController.dispose();
+    _bankController.dispose();
+    _accountController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -149,6 +159,47 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
                       fillColor: const Color(0xFFF8FAFF),
                     ),
                   ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: _bankController,
+                    style: GoogleFonts.poppins(fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Bank Name (Optional)',
+                      labelStyle: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF64748B)),
+                      prefixIcon: const Icon(Icons.food_bank_rounded, color: Color(0xFF1565C0), size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFF),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: _accountController,
+                    style: GoogleFonts.poppins(fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Account Details / IFSC (Optional)',
+                      labelStyle: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF64748B)),
+                      prefixIcon: const Icon(Icons.numbers_rounded, color: Color(0xFF1565C0), size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFF),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: _notesController,
+                    maxLines: 2,
+                    style: GoogleFonts.poppins(fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Payment Notes (Optional)',
+                      hintText: 'e.g. Please pay by the 5th',
+                      labelStyle: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF64748B)),
+                      prefixIcon: const Icon(Icons.notes_rounded, color: Color(0xFF1565C0), size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFF),
+                    ),
+                  ),
                   const SizedBox(height: 22),
                   Obx(() => Column(
                     children: [
@@ -174,7 +225,7 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                                onPressed: () => controller.savePaymentIdentifiers(upiId: '', name: ''),
+                                onPressed: () => controller.savePaymentConfig(upiId: '', name: '', bankName: '', accountInfo: '', paymentNotes: ''),
                                 tooltip: 'Clear UPI Details',
                               ),
                             ],
@@ -199,7 +250,13 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
                                         backgroundColor: Colors.orange, colorText: Colors.white);
                                     return;
                                   }
-                                  controller.savePaymentIdentifiers(upiId: upiId, name: name);
+                                  controller.savePaymentConfig(
+                                    upiId: upiId,
+                                    name: name,
+                                    bankName: _bankController.text,
+                                    accountInfo: _accountController.text,
+                                    paymentNotes: _notesController.text,
+                                  );
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1565C0),
@@ -326,14 +383,21 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
   }
 
   void _showAddFlatTypeDialog() {
-    String selectedType = '1BHK';
-    final List<String> standardTypes = ['1BHK', '2BHK', '3BHK', '4BHK', 'Penthouse', 'Shop', 'Others', 'Custom (Add New)'];
+    // Ensure UserController is initialized
+    final userController = Get.isRegistered<UserController>() 
+        ? Get.find<UserController>() 
+        : Get.put(UserController());
+        
+    String selectedType = userController.flatTypes.isNotEmpty 
+        ? userController.flatTypes.first 
+        : '2BHK';
     final customTypeCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('Add Flat Type & Amount', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           content: SingleChildScrollView(
             child: Column(
@@ -341,32 +405,42 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text('Select Flat / BHK Type', 
-                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600)),
-                const SizedBox(height: 8),
+                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade400),
+                    color: const Color(0xFFF8FAFF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedType,
                       isExpanded: true,
+                      dropdownColor: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
                       onChanged: (val) => setDialogState(() => selectedType = val!),
-                      items: standardTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      items: userController.flatTypes.map((t) => DropdownMenuItem(
+                        value: t, 
+                        child: Text(t, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500))
+                      )).toList(),
                     ),
                   ),
                 ),
-                if (selectedType == 'Custom (Add New)') ...[
+                if (selectedType == 'Custom / Other') ...[
                   const SizedBox(height: 15),
                   TextField(
                     controller: customTypeCtrl,
                     textCapitalization: TextCapitalization.characters,
+                    style: GoogleFonts.poppins(fontSize: 14),
                     decoration: InputDecoration(
                       labelText: 'Custom Flat Type Name',
                       hintText: 'e.g. DUPLEX, VILLA...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      labelStyle: GoogleFonts.poppins(fontSize: 13),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFF),
                     ),
                   ),
                 ],
@@ -374,21 +448,30 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
                 TextField(
                   controller: amountCtrl,
                   keyboardType: TextInputType.number,
+                  style: GoogleFonts.poppins(fontSize: 14),
                   decoration: InputDecoration(
                     labelText: 'Monthly amount (₹)',
                     hintText: 'e.g. 2500',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    labelStyle: GoogleFonts.poppins(fontSize: 13),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFF),
+                    prefixText: '₹ ',
+                    prefixStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: const Color(0xFF1565C0)),
                   ),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Get.back(), 
+              child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey.shade600))
+            ),
             ElevatedButton(
               onPressed: () async {
                 String finalType = selectedType;
-                if (selectedType == 'Custom (Add New)') {
+                if (selectedType == 'Custom / Other') {
                   finalType = customTypeCtrl.text.trim().toUpperCase();
                   if (finalType.isEmpty) {
                     Get.snackbar('Incomplete', 'Please enter custom type name',
@@ -412,7 +495,11 @@ class _AdminPaymentSettingsScreenState extends State<AdminPaymentSettingsScreen>
                 Get.back();
                 await controller.upsertFlatTypeAmount(finalType, amt);
               },
-              child: const Text('Add'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1565C0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text('Add Slab', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
             ),
           ],
         ),

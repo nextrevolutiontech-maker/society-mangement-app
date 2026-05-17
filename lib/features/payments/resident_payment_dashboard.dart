@@ -269,70 +269,11 @@ class ResidentPaymentDashboard extends StatelessWidget {
   }
 
   void _showUPIPaymentDialog(BuildContext context) async {
-    // Launch UPI App
-    bool success = await controller.initiateUPIPayment();
-    
-    // If it failed to launch (e.g. no UPI ID, or no app installed), don't show the confirmation dialog
-    if (!success) return;
+    // New logic handles its own dialogs
+    await controller.initiateUPIPayment();
+  }
 
-    // Show confirmation dialog to user
-    Get.dialog(
-      barrierDismissible: false,
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: const Color(0xFFE8F5E9), shape: BoxShape.circle),
-                child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF2E7D32), size: 32),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Complete Payment',
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Please complete the payment in your UPI app. Once done, click the button below to record your payment.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 25),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey.shade700)),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Get.back();
-                        await controller.confirmPaymentRecord();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1565C0),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text('I Have Paid', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Widget _buildSummaryCard() {
+    return Container();
   }
 }
